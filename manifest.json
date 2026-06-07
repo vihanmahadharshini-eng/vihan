@@ -1,0 +1,10 @@
+{
+  "name": "Vihan Personal Finance",
+  "short_name": "Vihan",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#0b1220",
+  "theme_color": "#2563eb",
+  "description": "Personal finance dashboard and expense tracker",
+  "icons": []
+}
