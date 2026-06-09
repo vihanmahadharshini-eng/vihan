@@ -3469,8 +3469,12 @@ function renderSettings() {
 function toggleSetting(el) { el.classList.toggle('on'); }
 
 function setTheme(t, btn) {
+  _theme = t;
+  localStorage.setItem('vihanTheme', t);
+  _applyTheme(t);
   document.querySelectorAll('.theme-btn').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
+  if (btn) btn.classList.add('active');
+  showToast('Theme set to ' + t, 'success', 1800);
 }
 
 document.getElementById('sBackupBtn')?.addEventListener('click', backupDatabase);
@@ -3825,15 +3829,6 @@ function _applyTheme(t) {
   if (btn) btn.textContent = dark ? '☀️' : '🌙';
 }
 
-function setTheme(t, btn) {
-  _theme = t;
-  localStorage.setItem('vihanTheme', t);
-  _applyTheme(t);
-  document.querySelectorAll('.theme-btn').forEach(b=>b.classList.remove('active'));
-  if (btn) btn.classList.add('active');
-  showToast('Theme set to ' + t, 'success', 1800);
-}
-
 /* Apply on load */
 _applyTheme(_theme);
 window.matchMedia('(prefers-color-scheme:dark)').addEventListener('change', ()=>{ if(_theme==='auto') _applyTheme('auto'); });
@@ -3895,5 +3890,17 @@ document.getElementById('sSyncBtn')?.removeEventListener && void 0; // can't rem
 
 </script>
 
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', async () => {
+    try {
+      const registration = await navigator.serviceWorker.register('./sw.js');
+      console.log('Service Worker Registered:', registration.scope);
+    } catch (error) {
+      console.error('Service Worker Registration Failed:', error);
+    }
+  });
+}
+</script>
 </body>
 </html>
