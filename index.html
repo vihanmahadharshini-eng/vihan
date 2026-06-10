@@ -8,6 +8,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<!-- FIX 9: SheetJS for real Excel export -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -85,7 +87,6 @@
     gap: 14px;
   }
 
-  /* Search box in header */
   .header-search {
     display: flex;
     align-items: center;
@@ -651,6 +652,16 @@
     font-family: 'DM Sans', sans-serif;
   }
 
+  .status-never {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+    font-family: 'DM Sans', sans-serif;
+  }
+
   .sync-btn {
     background: var(--blue);
     color: white;
@@ -1061,9 +1072,6 @@
   .person-stat-label { font-size: 11px; color: var(--muted); margin-bottom: 2px; text-transform: uppercase; letter-spacing: 0.4px; font-weight: 500; }
   .person-stat-value { font-family: 'DM Mono', monospace; font-size: 14px; font-weight: 700; }
 
-  .person-detail { display: none; }
-  .person-detail.open { display: block; }
-
   /* ===== SETTINGS SCREEN ===== */
   .settings-section { margin-bottom: 20px; }
   .settings-section .panel { margin-bottom: 0; }
@@ -1207,27 +1215,6 @@
   .uncateg-name { font-size: 13px; font-weight: 600; }
   .uncateg-amt { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--muted); margin-top: 1px; }
 
-  /* ===== SECOND MODAL (investment add) ===== */
-  .modal2-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.45);
-    z-index: 200;
-    display: flex;
-    align-items: flex-end;
-    justify-content: center;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.25s;
-  }
-
-  .modal2-overlay.open {
-    opacity: 1;
-    pointer-events: all;
-  }
-
-  .modal2-overlay.open .modal { transform: translateY(0); }
-
   /* ===== PERSON DETAIL MODAL ===== */
   .person-modal-overlay {
     position: fixed; inset: 0;
@@ -1238,7 +1225,6 @@
   .person-modal-overlay.open { opacity: 1; pointer-events: all; }
   .person-modal-overlay.open .modal { transform: translateY(0); }
 
-  /* tag-chip */
   .tag-chip {
     display: inline-flex;
     align-items: center;
@@ -1258,217 +1244,71 @@
   --transition-smooth: 280ms cubic-bezier(.4,0,.2,1);
 }
 
-html{
-  -webkit-text-size-adjust:100%;
+html{ -webkit-text-size-adjust:100%; }
+body{ text-rendering:optimizeLegibility; overflow-x:hidden; }
+img,svg{ max-width:100%; }
+
+.card,.panel,.sync-panel,.filter-bar,.report-stat,.person-card,.inv-type-card{
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast), background var(--transition-fast);
 }
 
-body{
-  text-rendering:optimizeLegibility;
-  overflow-x:hidden;
+.card:hover,.panel:hover,.person-card:hover,.inv-type-card:hover{ border-color:#d7dce5; }
+
+button,input,select,textarea{
+  transition: background var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast), transform var(--transition-fast), opacity var(--transition-fast);
 }
 
-img,svg{
-  max-width:100%;
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,.nav-item:focus-visible,.card:focus-visible{
+  outline:none; box-shadow:0 0 0 3px rgba(37,99,235,.15);
 }
 
-.card,
-.panel,
-.sync-panel,
-.filter-bar,
-.report-stat,
-.person-card,
-.inv-type-card{
-  transition:
-    transform var(--transition-fast),
-    box-shadow var(--transition-fast),
-    border-color var(--transition-fast),
-    background var(--transition-fast);
-}
+.main,.page-screen{ width:min(100%,1320px); }
 
-.card:hover,
-.panel:hover,
-.person-card:hover,
-.inv-type-card:hover{
-  border-color:#d7dce5;
-}
-
-button,
-input,
-select,
-textarea{
-  transition:
-    background var(--transition-fast),
-    border-color var(--transition-fast),
-    box-shadow var(--transition-fast),
-    transform var(--transition-fast),
-    opacity var(--transition-fast);
-}
-
-button:focus-visible,
-input:focus-visible,
-select:focus-visible,
-textarea:focus-visible,
-.nav-item:focus-visible,
-.card:focus-visible{
-  outline:none;
-  box-shadow:0 0 0 3px rgba(37,99,235,.15);
-}
-
-.main,
-.page-screen{
-  width:min(100%,1320px);
-}
-
-.metrics-grid .card,
-.panel,
-.sync-panel,
-.report-stat,
-.person-card,
-.inv-type-card{
-  min-height:100%;
-}
-
-.card-amount{
-  font-size:clamp(1.4rem,2vw,1.8rem);
-}
-
-.panel-title{
-  line-height:1.4;
-}
-
-.tx-row,
-.rule-row,
-.uncateg-row,
-.setting-row{
-  min-height:58px;
-}
-
-.modal{
-  width:min(100%,560px);
-  border-radius:24px 24px 0 0;
-}
+.card-amount{ font-size:clamp(1.4rem,2vw,1.8rem); }
+.panel-title{ line-height:1.4; }
+.tx-row,.rule-row,.uncateg-row,.setting-row{ min-height:58px; }
+.modal{ width:min(100%,560px); border-radius:24px 24px 0 0; }
 
 @media (max-width:1024px){
-  .main,
-  .page-screen{
-    padding:20px 16px;
-  }
-
-  .header{
-    padding:0 16px;
-  }
+  .main,.page-screen{ padding:20px 16px; }
+  .header{ padding:0 16px; }
 }
 
 @media (max-width:768px){
-  :root{
-    --header-h:60px;
-    --nav-h:64px;
-  }
-
-  .metrics-grid,
-  .reports-grid,
-  .panels,
-  .people-grid,
-  .health-grid,
-  .db-stat-grid{
-    gap:12px;
-  }
-
-  .card,
-  .panel,
-  .sync-panel{
-    padding:16px;
-  }
-
-  .header-right{
-    gap:10px;
-  }
-
-  .fab{
-    right:16px;
-    bottom:calc(var(--nav-h) + 14px);
-  }
-
-  .modal{
-    padding:22px 18px 34px;
-  }
-
-  .form-row{
-    grid-template-columns:1fr;
-  }
-
-  .sync-grid{
-    gap:14px;
-  }
+  :root{ --header-h:60px; --nav-h:64px; }
+  .metrics-grid,.reports-grid,.panels,.people-grid,.health-grid,.db-stat-grid{ gap:12px; }
+  .card,.panel,.sync-panel{ padding:16px; }
+  .header-right{ gap:10px; }
+  .fab{ right:16px; bottom:calc(var(--nav-h) + 14px); }
+  .modal{ padding:22px 18px 34px; }
+  .form-row{ grid-template-columns:1fr; }
+  .sync-grid{ gap:14px; }
 }
 
 @media (max-width:560px){
-  .header{
-    padding:0 12px;
-  }
-
-  .main,
-  .page-screen{
-    padding:16px 12px 84px;
-  }
-
-  .app-name{
-    font-size:18px;
-  }
-
-  .card{
-    padding:15px;
-  }
-
-  .card-sub{
-    line-height:1.5;
-  }
-
-  .tx-row{
-    padding:10px 4px;
-  }
-
-  .tx-name{
-    font-size:12px;
-  }
-
-  .tx-meta,
-  .tx-source{
-    font-size:10px;
-  }
-
-  .bottom-nav{
-    padding-bottom:env(safe-area-inset-bottom);
-  }
-
-  .nav-label{
-    font-size:9px;
-  }
-
-  .modal{
-    max-height:92vh;
-  }
-
-  .action-btn-row{
-    flex-direction:column;
-  }
-
-  .btn-action{
-    width:100%;
-  }
+  .header{ padding:0 12px; }
+  .main,.page-screen{ padding:16px 12px 84px; }
+  .app-name{ font-size:18px; }
+  .card{ padding:15px; }
+  .card-sub{ line-height:1.5; }
+  .tx-row{ padding:10px 4px; }
+  .tx-name{ font-size:12px; }
+  .tx-meta,.tx-source{ font-size:10px; }
+  .bottom-nav{ padding-bottom:env(safe-area-inset-bottom); }
+  .nav-label{ font-size:9px; }
+  .modal{ max-height:92vh; }
+  .action-btn-row{ flex-direction:column; }
+  .btn-action{ width:100%; }
 }
 
 @media (prefers-reduced-motion: reduce){
-  *,
-  *::before,
-  *::after{
+  *,*::before,*::after{
     animation-duration:0.01ms !important;
     animation-iteration-count:1 !important;
     transition-duration:0.01ms !important;
     scroll-behavior:auto !important;
   }
 }
-
 
   /* ===== DARK MODE VARIABLES ===== */
   [data-theme="dark"] {
@@ -1505,7 +1345,7 @@ textarea:focus-visible,
   [data-theme="dark"] .modal-close { background:#0D1117; border-color:#21262D; color:#8B949E; }
   [data-theme="dark"] .modal-overlay { background:rgba(0,0,0,.7); }
 
-  /* ===== PREMIUM UPGRADE — transitions & polish ===== */
+  /* ===== PREMIUM UPGRADE ===== */
   body { transition: background .25s, color .25s; -webkit-font-smoothing: antialiased; }
   .app-name { background: linear-gradient(135deg,#2563EB,#60A5FA); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
   .avatar { background: linear-gradient(135deg,#2563EB,#60A5FA); box-shadow:0 2px 8px rgba(37,99,235,.3); transition: transform .15s, box-shadow .15s; }
@@ -1551,13 +1391,13 @@ textarea:focus-visible,
   /* ===== SECTION DIVIDER ===== */
   .section-title { display:flex; align-items:center; gap:10px; }
   .section-title::after { content:''; flex:1; height:1px; background:var(--border); display:inline-block; }
-
 </style>
 </head>
 <body class="ui-enhanced">
 
-<!-- ===== HEADER ===== -->
 <div id="toastContainer" aria-live="polite"></div>
+
+<!-- ===== HEADER ===== -->
 <header class="header" role="banner">
   <div class="header-left">
     <a href="#" class="logo-wrap" aria-label="vihan — personal finance home">
@@ -1597,12 +1437,11 @@ textarea:focus-visible,
 <!-- ===== MAIN ===== -->
 <main class="main" id="main-content" role="main">
 
-  <p class="section-title" id="overviewTitle">Overview — May 2026</p>
+  <p class="section-title" id="overviewTitle">Overview</p>
 
   <!-- Metric Cards Grid -->
   <div class="metrics-grid" role="list" aria-label="Financial overview metrics">
 
-    <!-- Today Spend -->
     <div class="card card-blue" role="listitem" tabindex="0">
       <div class="card-header">
         <span class="card-label">Today Spend</span>
@@ -1610,11 +1449,10 @@ textarea:focus-visible,
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
         </div>
       </div>
-      <div class="card-amount" id="todaySpendAmt">₹850</div>
-      <div class="card-sub">vs yesterday &nbsp;<span class="badge badge-up">↑ 12%</span></div>
+      <div class="card-amount" id="todaySpendAmt">₹0</div>
+      <div class="card-sub" id="todaySpendSub">No transactions today</div>
     </div>
 
-    <!-- This Month -->
     <div class="card card-blue" role="listitem" tabindex="0">
       <div class="card-header">
         <span class="card-label">This Month</span>
@@ -1622,11 +1460,10 @@ textarea:focus-visible,
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
         </div>
       </div>
-      <div class="card-amount" id="monthSpendAmt">₹12,350</div>
-      <div class="card-sub" id="txCountSub">28 transactions this month</div>
+      <div class="card-amount" id="monthSpendAmt">₹0</div>
+      <div class="card-sub" id="txCountSub">0 transactions this month</div>
     </div>
 
-    <!-- Credit Used -->
     <div class="card card-amber" role="listitem" tabindex="0">
       <div class="card-header">
         <span class="card-label">Credit Used</span>
@@ -1634,20 +1471,19 @@ textarea:focus-visible,
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2" stroke-linecap="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
         </div>
       </div>
-      <div class="card-amount" id="creditUsedAmt">₹8,000</div>
+      <div class="card-amount" id="creditUsedAmt">₹0</div>
       <div class="progress-wrap">
         <div class="progress-labels">
           <span>₹0</span>
-          <span id="creditPctLabel" style="font-weight:600;">20% used</span>
-          <span id="creditLimitLabel">₹40K limit</span>
+          <span id="creditPctLabel" style="font-weight:600;">0% used</span>
+          <span id="creditLimitLabel">No limit set</span>
         </div>
-        <div class="progress-track" id="creditProgressTrack" role="progressbar" aria-valuenow="20" aria-valuemin="0" aria-valuemax="100" aria-label="Credit utilisation">
-          <div class="progress-fill fill-safe" id="creditProgressFill" style="width:20%"></div>
+        <div class="progress-track" id="creditProgressTrack" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="Credit utilisation">
+          <div class="progress-fill fill-safe" id="creditProgressFill" style="width:0%"></div>
         </div>
       </div>
     </div>
 
-    <!-- Income -->
     <div class="card card-green" role="listitem" tabindex="0">
       <div class="card-header">
         <span class="card-label">Income</span>
@@ -1655,11 +1491,10 @@ textarea:focus-visible,
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2" stroke-linecap="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
         </div>
       </div>
-      <div class="card-amount" id="incomeAmt">₹40,000</div>
-      <div class="card-sub"><span class="badge badge-up">Salary credited</span></div>
+      <div class="card-amount" id="incomeAmt">₹0</div>
+      <div class="card-sub" id="incomeSub"><span class="badge badge-neutral">No income recorded</span></div>
     </div>
 
-    <!-- Expenses -->
     <div class="card card-red" role="listitem" tabindex="0">
       <div class="card-header">
         <span class="card-label">Expenses</span>
@@ -1667,11 +1502,11 @@ textarea:focus-visible,
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#DC2626" stroke-width="2" stroke-linecap="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
         </div>
       </div>
-      <div class="card-amount" id="expensesAmt">₹26,500</div>
-      <div class="card-sub"><span class="badge badge-down" id="expPctBadge">66% of income spent</span></div>
+      <div class="card-amount" id="expensesAmt">₹0</div>
+      <!-- FIX 1: expPct badge rendered dynamically, never hardcoded -->
+      <div class="card-sub"><span class="badge badge-down" id="expPctBadge">0% of income spent</span></div>
     </div>
 
-    <!-- Balance -->
     <div class="card card-navy" role="listitem" tabindex="0">
       <div class="card-header">
         <span class="card-label">Balance</span>
@@ -1679,37 +1514,33 @@ textarea:focus-visible,
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1E40AF" stroke-width="2" stroke-linecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
         </div>
       </div>
-      <div class="card-amount" id="balanceAmt">₹13,500</div>
-      <div class="card-sub"><span class="badge badge-up">Available to spend</span></div>
+      <div class="card-amount" id="balanceAmt">₹0</div>
+      <div class="card-sub"><span class="badge badge-neutral" id="balanceBadge">Add income to track balance</span></div>
     </div>
 
   </div>
 
   <!-- Needs Review Banner -->
-  <div class="needs-review-card" id="reviewBanner" role="alert">
+  <div class="needs-review-card" id="reviewBanner" role="alert" style="display:none;">
     <div class="review-icon" aria-hidden="true">⚠️</div>
     <div>
-      <div class="review-title" id="reviewTitle">Needs Review — 3 items</div>
-      <div class="review-sub">3 transactions are uncategorized and need a category assigned</div>
+      <div class="review-title" id="reviewTitle">Needs Review</div>
+      <div class="review-sub" id="reviewSub">Transactions need a category assigned</div>
     </div>
-    <div class="review-badge" id="reviewBadge">3 items</div>
+    <div class="review-badge" id="reviewBadge">0 items</div>
   </div>
 
   <!-- Panels -->
   <div class="panels">
 
-    <!-- Left: Recent Transactions -->
     <div class="panel">
       <div class="panel-title">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
         Recent Transactions
       </div>
-      <div id="txList" role="list" aria-label="Recent transactions list">
-        <!-- Rendered by JS -->
-      </div>
+      <div id="txList" role="list" aria-label="Recent transactions list"></div>
     </div>
 
-    <!-- Right: Spending Split Donut -->
     <div class="panel">
       <div class="panel-title">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 0 20"/><path d="M12 12 L12 2"/></svg>
@@ -1720,7 +1551,6 @@ textarea:focus-visible,
           <svg id="donutSvg" width="168" height="168" viewBox="0 0 168 168" role="img" aria-label="Spending split by Kakeibo groups">
             <title id="donutTitle">Kakeibo spending split</title>
             <circle cx="84" cy="84" r="62" fill="none" stroke="#F3F4F6" stroke-width="22"/>
-            <!-- Segments rendered by JS -->
           </svg>
           <div class="donut-label">
             <div class="donut-total" id="donutTotal">₹0</div>
@@ -1775,21 +1605,22 @@ textarea:focus-visible,
       System Health
     </div>
     <div class="health-grid">
+      <!-- FIX 3: Database size computed live in renderHealth(), never hardcoded -->
       <div class="health-item">
         <div class="health-label">Database Size</div>
-        <div class="health-value" id="healthDbSize">38.4 MB</div>
+        <div class="health-value" id="healthDbSize">—</div>
       </div>
       <div class="health-item">
         <div class="health-label">Last SMS Sync</div>
-        <div class="health-value" id="healthSmsSync">Today 11:05 PM</div>
+        <div class="health-value" id="healthSmsSync">—</div>
       </div>
       <div class="health-item">
         <div class="health-label">Last Email Sync</div>
-        <div class="health-value" id="healthEmailSync">Today 11:30 PM</div>
+        <div class="health-value" id="healthEmailSync">—</div>
       </div>
       <div class="health-item">
         <div class="health-label">Last Backup</div>
-        <div class="health-value" id="healthBackup">01 May</div>
+        <div class="health-value" id="healthBackup">—</div>
       </div>
     </div>
     <div class="action-btn-row">
@@ -1809,6 +1640,7 @@ textarea:focus-visible,
   </div>
 
   <!-- Email Sync Panel -->
+  <!-- FIX 4: All values dynamic — no hardcoded "142 emails", "Working", or timestamps -->
   <div class="sync-panel" role="region" aria-labelledby="sync-title">
     <div class="panel-title" id="sync-title" style="margin-bottom:14px;">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
@@ -1817,18 +1649,17 @@ textarea:focus-visible,
     <div class="sync-grid">
       <div>
         <div class="sync-item-label">Last Sync</div>
-        <div class="sync-item-value" id="lastSyncTime">01 May 11:30 PM</div>
+        <div class="sync-item-value" id="lastSyncTime">Never</div>
       </div>
       <div>
         <div class="sync-item-label">Status</div>
-        <div class="status-ok">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-          Working
-        </div>
+        <!-- FIX 4: Status rendered by renderHealth(), not hardcoded -->
+        <div id="emailSyncStatus" class="status-never">Not synced</div>
       </div>
       <div>
         <div class="sync-item-label">Emails Synced</div>
-        <div class="sync-item-value">142 emails</div>
+        <!-- FIX 4: Count from financeData.emailSyncCount, not hardcoded "142" -->
+        <div class="sync-item-value" id="emailSyncCount">0 emails</div>
       </div>
       <div class="sync-btn-wrap">
         <button class="sync-btn" id="syncBtn" aria-label="Sync emails now">
@@ -1847,7 +1678,6 @@ textarea:focus-visible,
 <section class="page-screen" id="txPage">
   <p class="section-title">Transactions — All Records</p>
 
-  <!-- Filter Bar -->
   <div class="filter-bar">
     <div class="filter-row">
       <div class="form-group" style="margin:0">
@@ -1888,7 +1718,6 @@ textarea:focus-visible,
     </div>
   </div>
 
-  <!-- Transaction List -->
   <div class="panel" style="margin-bottom:16px;">
     <div class="panel-title">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
@@ -1914,7 +1743,6 @@ textarea:focus-visible,
 <section class="page-screen" id="reportsPage">
   <p class="section-title">Reports — Financial Summary</p>
 
-  <!-- Summary Stats -->
   <div class="report-stat-row">
     <div class="report-stat">
       <div class="report-stat-label">Total Income</div>
@@ -1935,7 +1763,6 @@ textarea:focus-visible,
   </div>
 
   <div class="reports-grid">
-    <!-- Monthly Bar Chart -->
     <div class="panel">
       <div class="panel-title">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
@@ -1946,7 +1773,6 @@ textarea:focus-visible,
       </div>
     </div>
 
-    <!-- Category Pie / Donut -->
     <div class="panel">
       <div class="panel-title">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 0 20"/></svg>
@@ -1967,11 +1793,10 @@ textarea:focus-visible,
     </div>
   </div>
 
-  <!-- Year Summary Table -->
   <div class="panel" style="margin-bottom:16px;">
     <div class="panel-title">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18"/></svg>
-      Year Summary 2026
+      Year Summary <span id="yearSummaryHeadingYear"></span>
     </div>
     <div style="overflow-x:auto;">
       <table class="year-table" id="yearSummaryTable">
@@ -2058,7 +1883,6 @@ textarea:focus-visible,
 <section class="page-screen" id="settingsPage">
   <p class="section-title">Settings</p>
 
-  <!-- Backup -->
   <div class="settings-section">
     <div class="panel">
       <div class="panel-title">
@@ -2076,7 +1900,6 @@ textarea:focus-visible,
     </div>
   </div>
 
-  <!-- Security -->
   <div class="settings-section">
     <div class="panel">
       <div class="panel-title">
@@ -2104,7 +1927,6 @@ textarea:focus-visible,
     </div>
   </div>
 
-  <!-- Sync -->
   <div class="settings-section">
     <div class="panel">
       <div class="panel-title">
@@ -2114,7 +1936,7 @@ textarea:focus-visible,
       <div class="form-row" style="margin-bottom:12px;">
         <div class="form-group">
           <label class="form-label">Sync Email Address</label>
-          <input type="email" class="form-input" id="sSyncEmail" value="vihan@gmail.com">
+          <input type="email" class="form-input" id="sSyncEmail" value="">
         </div>
         <div class="form-group" style="display:flex;align-items:flex-end;">
           <button class="btn-update" id="sSyncBtn" style="width:100%;">Sync Now</button>
@@ -2127,13 +1949,13 @@ textarea:focus-visible,
         </div>
         <div class="health-item">
           <div class="health-label">Emails Synced</div>
-          <div class="health-value">142 emails</div>
+          <!-- FIX 4: Dynamic count, not hardcoded -->
+          <div class="health-value" id="sEmailCount">0 emails</div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Theme -->
   <div class="settings-section">
     <div class="panel">
       <div class="panel-title">
@@ -2155,7 +1977,6 @@ textarea:focus-visible,
 <section class="page-screen" id="invPage">
   <p class="section-title">Investments — Full Manager</p>
 
-  <!-- Type summary cards -->
   <div class="inv-type-grid">
     <div class="inv-type-card">
       <div class="inv-type-icon">📈</div>
@@ -2179,7 +2000,6 @@ textarea:focus-visible,
     </div>
   </div>
 
-  <!-- Investment List + Add -->
   <div class="panels">
     <div class="panel">
       <div class="panel-title">
@@ -2284,6 +2104,7 @@ textarea:focus-visible,
       <div class="db-stat-num" id="dbTrashCount" style="color:var(--red)">0</div>
       <div class="db-stat-lbl">In Trash</div>
     </div>
+    <!-- FIX 3: DB size computed live in renderDbInfo() -->
     <div class="db-stat">
       <div class="db-stat-num" id="dbSize" style="color:var(--muted)">0 KB</div>
       <div class="db-stat-lbl">DB Size</div>
@@ -2298,15 +2119,15 @@ textarea:focus-visible,
     <div class="health-grid">
       <div class="health-item">
         <div class="health-label">Last Backup</div>
-        <div class="health-value" id="dbLastBackup">—</div>
+        <div class="health-value" id="dbLastBackup">Never</div>
       </div>
       <div class="health-item">
         <div class="health-label">Last Sync</div>
-        <div class="health-value" id="dbLastSync">—</div>
+        <div class="health-value" id="dbLastSync">Never</div>
       </div>
       <div class="health-item">
         <div class="health-label">Last SMS Sync</div>
-        <div class="health-value" id="dbLastSms">—</div>
+        <div class="health-value" id="dbLastSms">Never</div>
       </div>
       <div class="health-item">
         <div class="health-label">Oldest Transaction</div>
@@ -2330,7 +2151,6 @@ textarea:focus-visible,
 <section class="page-screen" id="rulesPage">
   <p class="section-title">Smart Rules — Auto-Category Learning</p>
 
-  <!-- Uncategorized transactions -->
   <div class="panel" style="margin-bottom:16px;">
     <div class="panel-title">
       <span style="font-size:16px;">⚠️</span>
@@ -2340,7 +2160,6 @@ textarea:focus-visible,
     <div id="uncatList"></div>
   </div>
 
-  <!-- Add rule manually -->
   <div class="panel" style="margin-bottom:16px;">
     <div class="panel-title">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -2369,7 +2188,6 @@ textarea:focus-visible,
     <button class="btn-update" id="addRuleBtn" style="margin-top:8px;">Save Rule</button>
   </div>
 
-  <!-- Existing rules -->
   <div class="panel">
     <div class="panel-title">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
@@ -2485,29 +2303,30 @@ textarea:focus-visible,
 /* =========================================================
    CENTRAL DATA ENGINE
    ========================================================= */
+const _NOW = new Date();
+const _CUR_MONTH_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][_NOW.getMonth()];
+const _CUR_MONTH_LONG  = ['January','February','March','April','May','June','July','August','September','October','November','December'][_NOW.getMonth()];
+const _CUR_YEAR        = _NOW.getFullYear();
+
+/* FIX 7: DEFAULT_DATA has all-zero values — no demo text, no fake numbers */
 const DEFAULT_DATA = {
-  todaySpend: 850,
-  monthSpend: 12350,
-  creditUsed: 8000,
-  creditLimit: 40000,
-  income: 40000,
-  expenses: 26500,
-  balance: 13500,
-  reviewItems: 3,
-  lastEmailSync: 'Today 11:30 PM',
-  lastSmsSync: 'Today 11:05 PM',
-  lastBackup: '01 May',
-  dbSize: '38.4 MB',
-  investments: [
-    { type: 'SIP', amount: 0, date: 'None' }
-  ],
-  transactions: [
-    { merchant:'IndianOil',  amount:450,  category:'Fuel',      date:'Today',      source:'SMS'    },
-    { merchant:'Amazon',     amount:899,  category:'Shopping',  date:'Yesterday',  source:'Email'  },
-    { merchant:'Milk Shop',  amount:120,  category:'Groceries', date:'Yesterday',  source:'Manual' },
-    { merchant:'Swiggy',     amount:240,  category:'Food',      date:'2 days ago', source:'SMS'    },
-    { merchant:'Electricity',amount:1800, category:'Bills',     date:'3 days ago', source:'Email'  }
-  ]
+  todaySpend:     0,
+  monthSpend:     0,
+  creditUsed:     0,
+  creditLimit:    0,
+  income:         0,
+  expenses:       0,
+  balance:        0,
+  reviewItems:    0,
+  lastEmailSync:  '',
+  lastSmsSync:    '',
+  lastBackup:     '',
+  emailSyncCount: 0,   /* FIX 4: track actual synced email count */
+  investments:    [],
+  transactions:   [],
+  people:         [],
+  trash:          [],
+  rules:          []
 };
 
 function loadData() {
@@ -2515,7 +2334,14 @@ function loadData() {
     const saved = localStorage.getItem('vihanFinanceData');
     if (saved) {
       const d = JSON.parse(saved);
-      if (!d.investments) d.investments = JSON.parse(JSON.stringify(DEFAULT_DATA.investments));
+      if (!d.investments)   d.investments   = [];
+      if (!d.people)        d.people        = [];
+      if (!d.trash)         d.trash         = [];
+      if (!d.rules)         d.rules         = [];
+      if (d.creditLimit    === undefined) d.creditLimit    = 0;
+      if (d.creditUsed     === undefined) d.creditUsed     = 0;
+      if (d.reviewItems    === undefined) d.reviewItems    = 0;
+      if (d.emailSyncCount === undefined) d.emailSyncCount = 0;
       return d;
     }
   } catch(e) {}
@@ -2529,7 +2355,7 @@ function saveData() {
 let financeData = loadData();
 
 /* =========================================================
-   CATEGORY / FORMAT HELPERS
+   HELPERS
    ========================================================= */
 const CATEGORY_META = {
   'Food':       { icon:'🍔', bg:'#FEF2F2', color:'#DC2626' },
@@ -2555,89 +2381,124 @@ function fmt(n) {
   if (n >= 1000)   return '₹' + (n/1000).toFixed(n % 1000 === 0 ? 0 : 1) + 'K';
   return '₹' + n.toLocaleString('en-IN');
 }
-function fmtFull(n) { return '₹' + n.toLocaleString('en-IN'); }
+function fmtFull(n) { return '₹' + (n||0).toLocaleString('en-IN'); }
 function sourceIcon(src) { return src==='SMS'?'📩':src==='Email'?'📧':'✍'; }
 
 /* =========================================================
-   RENDER METRIC CARDS
+   FIX 3 — Live DB size helper (used by renderHealth & renderDbInfo)
+   ========================================================= */
+function computeDbSize() {
+  const json = JSON.stringify(financeData);
+  const bytes = new Blob([json]).size;
+  if (bytes >= 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+  return (bytes / 1024).toFixed(1) + ' KB';
+}
+
+/* =========================================================
+   RENDER METRIC CARDS — FIX 1 & FIX 2
    ========================================================= */
 function renderCards() {
   document.getElementById('todaySpendAmt').textContent = fmtFull(financeData.todaySpend);
   document.getElementById('monthSpendAmt').textContent = fmtFull(financeData.monthSpend);
-  document.getElementById('txCountSub').textContent    = `${financeData.transactions.length} transactions this month`;
-  document.getElementById('incomeAmt').textContent     = fmtFull(financeData.income);
-  document.getElementById('expensesAmt').textContent   = fmtFull(financeData.expenses);
-  document.getElementById('balanceAmt').textContent    = fmtFull(financeData.balance);
+  document.getElementById('txCountSub').textContent    = `${financeData.transactions.length} transaction${financeData.transactions.length !== 1 ? 's' : ''} this month`;
 
-  const pct = Math.round((financeData.creditUsed / financeData.creditLimit) * 100);
-  document.getElementById('creditUsedAmt').textContent    = fmtFull(financeData.creditUsed);
-  document.getElementById('creditLimitLabel').textContent = fmt(financeData.creditLimit) + ' limit';
-  const pctLabel = document.getElementById('creditPctLabel');
-  pctLabel.textContent = pct + '% used';
-  const fill = document.getElementById('creditProgressFill');
-  fill.style.width = pct + '%';
-  fill.className = 'progress-fill ' + (pct<=50?'fill-safe':pct<=75?'fill-warn':'fill-danger');
-  pctLabel.style.color = pct<=50?'var(--green)':pct<=75?'var(--amber)':'var(--red)';
-  document.getElementById('creditProgressTrack').setAttribute('aria-valuenow', pct);
+  /* FIX 7: Income badge — only show "Salary credited" if income > 0 */
+  document.getElementById('incomeAmt').textContent = fmtFull(financeData.income);
+  const incomeSub = document.getElementById('incomeSub');
+  if (incomeSub) {
+    incomeSub.innerHTML = financeData.income > 0
+      ? '<span class="badge badge-up">Salary credited</span>'
+      : '<span class="badge badge-neutral">No income recorded</span>';
+  }
 
-  const expPct = Math.round((financeData.expenses / financeData.income) * 100);
+  document.getElementById('expensesAmt').textContent = fmtFull(financeData.expenses);
+
+  /* FIX 1: Divide-by-zero guard for expense percentage */
+  const expPct = financeData.income > 0
+    ? Math.round((financeData.expenses / financeData.income) * 100)
+    : 0;
   document.getElementById('expPctBadge').textContent = expPct + '% of income spent';
 
+  document.getElementById('balanceAmt').textContent = fmtFull(financeData.balance);
+  const balanceBadge = document.getElementById('balanceBadge');
+  if (balanceBadge) {
+    balanceBadge.textContent = financeData.income > 0 ? 'Available to spend' : 'Add income to track balance';
+    balanceBadge.className   = financeData.income > 0 ? 'badge badge-up' : 'badge badge-neutral';
+  }
+
+  /* Credit used — FIX 1: Divide-by-zero guard */
+  document.getElementById('creditUsedAmt').textContent    = fmtFull(financeData.creditUsed);
+  document.getElementById('creditLimitLabel').textContent = financeData.creditLimit > 0
+    ? fmt(financeData.creditLimit) + ' limit'
+    : 'No limit set';
+
+  const pct = financeData.creditLimit > 0
+    ? Math.round((financeData.creditUsed / financeData.creditLimit) * 100)
+    : 0;
+
+  const pctLabel = document.getElementById('creditPctLabel');
+  pctLabel.textContent   = pct + '% used';
+  pctLabel.style.color   = pct <= 50 ? 'var(--green)' : pct <= 75 ? 'var(--amber)' : 'var(--red)';
+
+  const fill = document.getElementById('creditProgressFill');
+  fill.style.width  = pct + '%';
+  fill.className    = 'progress-fill ' + (pct <= 50 ? 'fill-safe' : pct <= 75 ? 'fill-warn' : 'fill-danger');
+
+  document.getElementById('creditProgressTrack').setAttribute('aria-valuenow', pct);
+
+  /* Today spend sub-label */
+  const todaySub = document.getElementById('todaySpendSub');
+  if (todaySub) {
+    todaySub.textContent = financeData.todaySpend > 0
+      ? 'Spent today'
+      : 'No transactions today';
+  }
+
+  /* Review banner — only show if there are items to review */
   const n = financeData.reviewItems;
-  document.getElementById('reviewTitle').textContent = `Needs Review — ${n} item${n!==1?'s':''}`;
-  document.getElementById('reviewBadge').textContent = `${n} item${n!==1?'s':''}`;
-  document.getElementById('reviewBanner').style.display = n > 0 ? 'flex' : 'none';
+  const banner = document.getElementById('reviewBanner');
+  if (banner) {
+    banner.style.display = n > 0 ? 'flex' : 'none';
+    document.getElementById('reviewTitle').textContent = `Needs Review — ${n} item${n !== 1 ? 's' : ''}`;
+    document.getElementById('reviewSub').textContent   = `${n} transaction${n !== 1 ? 's' : ''} need a category assigned`;
+    document.getElementById('reviewBadge').textContent = `${n} item${n !== 1 ? 's' : ''}`;
+  }
 }
 
 /* =========================================================
-   MODULE 1 & 2 — INVESTMENTS
+   INVESTMENTS
    ========================================================= */
 function renderInvestments() {
-  let total = 0;
-  let lastAmt = 0, lastDate = 'None', upcoming = 'None';
+  let total = 0, lastAmt = 0, lastDate = 'None';
   financeData.investments.forEach(inv => {
     total += inv.amount;
-    if (inv.amount > 0) {
-      lastAmt = inv.amount;
-      lastDate = inv.date;
-    }
+    if (inv.amount > 0) { lastAmt = inv.amount; lastDate = inv.date; }
   });
-  const sipInvs = financeData.investments.filter(i => i.type === 'SIP');
-  const monthlySip = sipInvs.reduce((s,i) => s + i.amount, 0);
+  const monthlySip = financeData.investments.filter(i => i.type === 'SIP').reduce((s,i) => s + i.amount, 0);
 
-  document.getElementById('invTotal').textContent    = fmtFull(total);
-  document.getElementById('invMonthly').textContent  = fmtFull(monthlySip);
-  document.getElementById('invUpcoming').textContent = upcoming;
-  document.getElementById('invLast').textContent     = lastAmt > 0 ? `${fmtFull(lastAmt)} · ${lastDate}` : 'None';
+  document.getElementById('invTotal').textContent   = fmtFull(total);
+  document.getElementById('invMonthly').textContent = fmtFull(monthlySip);
+  document.getElementById('invUpcoming').textContent= 'None';
+  document.getElementById('invLast').textContent    = lastAmt > 0 ? `${fmtFull(lastAmt)} · ${lastDate}` : 'None';
 }
 
 /* =========================================================
-   RENDER TRANSACTIONS — dashboard widget (click-to-edit)
-   Shows up to 10 most recent, sorted newest → oldest.
+   RENDER TRANSACTIONS (dashboard widget)
    ========================================================= */
 function renderTransactions(list) {
   const container = document.getElementById('txList');
   if (!container) return;
-
-  // Always work from the canonical sorted array unless a specific list is passed
   const source = list || financeData.transactions;
-
-  // Sort newest → oldest using isoDate
   const sorted = source.slice().sort((a, b) => {
-    const ka = txSortKey ? txSortKey(a) : (a.isoDate || a.date || '');
-    const kb = txSortKey ? txSortKey(b) : (b.isoDate || b.date || '');
+    const ka = txSortKey(a), kb = txSortKey(b);
     return kb > ka ? 1 : kb < ka ? -1 : 0;
   });
-
-  // Dashboard widget: show latest 10
   const display = sorted.slice(0, 10);
-
   if (!display.length) {
-    container.innerHTML = '<div class="tx-empty">No transactions found.</div>';
+    container.innerHTML = '<div class="tx-empty">No transactions yet. Tap + to add one.</div>';
     return;
   }
-
-  container.innerHTML = display.map((tx) => {
+  container.innerHTML = display.map(tx => {
     const realIdx = financeData.transactions.indexOf(tx);
     const meta    = CATEGORY_META[tx.category] || CATEGORY_META['Other'];
     return `
@@ -2654,8 +2515,6 @@ function renderTransactions(list) {
         </div>
       </div>`;
   }).join('');
-
-  /* Attach click-to-edit listeners */
   container.querySelectorAll('.tx-row').forEach(row => {
     const idx = parseInt(row.dataset.idx);
     row.addEventListener('click',   () => openEditModal(idx));
@@ -2678,13 +2537,13 @@ function calcKakeibo() {
 }
 
 function renderKakeibo() {
-  const totals = calcKakeibo();
-  const grid = document.getElementById('kakeiboGrid');
-  const entries = Object.entries(KAKEIBO_GROUPS);
-  const grandTotal = Object.values(totals).reduce((a,b)=>a+b,0) || 1;
-  grid.innerHTML = entries.map(([group, meta]) => {
+  const totals     = calcKakeibo();
+  const grandTotal = Object.values(totals).reduce((a,b) => a+b, 0) || 1;
+  const grid       = document.getElementById('kakeiboGrid');
+  const entries    = Object.entries(KAKEIBO_GROUPS);
+  grid.innerHTML   = entries.map(([group, meta]) => {
     const amt = totals[group];
-    const pct = Math.round((amt/grandTotal)*100);
+    const pct = Math.round((amt / grandTotal) * 100);
     return `
       <div class="kakeibo-item">
         <div class="kakeibo-label" style="color:${meta.color}">${group}</div>
@@ -2700,31 +2559,31 @@ function renderKakeibo() {
 const CIRC = 2 * Math.PI * 62;
 
 function renderDonut() {
-  const totals = calcKakeibo();
-  const grandTotal = Object.values(totals).reduce((a,b)=>a+b,0) || 1;
-  const groups = Object.entries(KAKEIBO_GROUPS);
-  const svg = document.getElementById('donutSvg');
-  [...svg.querySelectorAll('.donut-seg')].forEach(s=>s.remove());
+  const totals     = calcKakeibo();
+  const grandTotal = Object.values(totals).reduce((a,b) => a+b, 0) || 1;
+  const groups     = Object.entries(KAKEIBO_GROUPS);
+  const svg        = document.getElementById('donutSvg');
+  [...svg.querySelectorAll('.donut-seg')].forEach(s => s.remove());
   let offset = 0;
   groups.forEach(([group, meta], i) => {
-    const dash = (totals[group]/grandTotal)*CIRC;
-    const circle = document.createElementNS('http://www.w3.org/2000/svg','circle');
-    circle.setAttribute('cx',84); circle.setAttribute('cy',84); circle.setAttribute('r',62);
-    circle.setAttribute('fill','none'); circle.setAttribute('stroke',meta.color);
-    circle.setAttribute('stroke-width',22);
-    circle.setAttribute('stroke-dasharray',`0 ${CIRC}`);
-    circle.setAttribute('stroke-dashoffset',-offset);
-    circle.setAttribute('transform','rotate(-90 84 84)');
+    const dash   = (totals[group] / grandTotal) * CIRC;
+    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    circle.setAttribute('cx', 84); circle.setAttribute('cy', 84); circle.setAttribute('r', 62);
+    circle.setAttribute('fill', 'none'); circle.setAttribute('stroke', meta.color);
+    circle.setAttribute('stroke-width', 22);
+    circle.setAttribute('stroke-dasharray', `0 ${CIRC}`);
+    circle.setAttribute('stroke-dashoffset', -offset);
+    circle.setAttribute('transform', 'rotate(-90 84 84)');
     circle.classList.add('donut-seg');
-    circle.style.setProperty('--target-dash',`${dash} ${CIRC}`);
-    circle.style.animationDelay = (0.3+i*0.2)+'s';
+    circle.style.setProperty('--target-dash', `${dash} ${CIRC}`);
+    circle.style.animationDelay = (0.3 + i * 0.2) + 's';
     svg.appendChild(circle);
     offset += dash;
   });
   document.getElementById('donutTotal').textContent = fmt(grandTotal);
   const legend = document.getElementById('donutLegend');
   legend.innerHTML = groups.map(([group, meta]) => {
-    const pct = Math.round((totals[group]/grandTotal)*100);
+    const pct = Math.round((totals[group] / grandTotal) * 100);
     return `
       <div class="legend-item" role="listitem">
         <div class="legend-dot" style="background:${meta.color};"></div>
@@ -2739,108 +2598,141 @@ function renderDonut() {
 }
 
 /* =========================================================
-   SYSTEM HEALTH
+   FIX 3 & FIX 4 — SYSTEM HEALTH (all live, no hardcoded values)
    ========================================================= */
 function renderHealth() {
-  document.getElementById('healthDbSize').textContent    = financeData.dbSize || '38.4 MB';
-  document.getElementById('healthSmsSync').textContent   = financeData.lastSmsSync || 'N/A';
-  document.getElementById('healthEmailSync').textContent = financeData.lastEmailSync || 'N/A';
-  document.getElementById('healthBackup').textContent    = financeData.lastBackup || 'N/A';
-  document.getElementById('lastSyncTime').textContent    = financeData.lastEmailSync || 'N/A';
+  /* FIX 3: Always compute DB size live */
+  document.getElementById('healthDbSize').textContent    = computeDbSize();
+  document.getElementById('healthSmsSync').textContent   = financeData.lastSmsSync   || 'Never';
+  document.getElementById('healthEmailSync').textContent = financeData.lastEmailSync  || 'Never';
+  document.getElementById('healthBackup').textContent    = financeData.lastBackup     || 'Never';
+  document.getElementById('lastSyncTime').textContent    = financeData.lastEmailSync  || 'Never';
+
+  /* FIX 4: Email sync count & status — all dynamic */
+  const count       = financeData.emailSyncCount || 0;
+  const countEl     = document.getElementById('emailSyncCount');
+  const statusEl    = document.getElementById('emailSyncStatus');
+  if (countEl) countEl.textContent = count + ' email' + (count !== 1 ? 's' : '');
+  if (statusEl) {
+    if (financeData.lastEmailSync) {
+      statusEl.className = 'status-ok';
+      statusEl.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Working`;
+    } else {
+      statusEl.className = 'status-never';
+      statusEl.textContent = 'Not synced';
+    }
+  }
 }
 
 /* =========================================================
    FULL RENDER
    ========================================================= */
 function renderAll() {
+  const ot = document.getElementById('overviewTitle');
+  if (ot) ot.textContent = 'Overview — ' + _CUR_MONTH_LONG + ' ' + _CUR_YEAR;
   renderCards();
-  renderTransactions(); // always reads financeData.transactions, sorts internally
+  renderTransactions();
   renderDonut();
   renderKakeibo();
   renderHealth();
   renderInvestments();
-  // If the Transactions screen is currently visible, refresh it too
   const txPage = document.getElementById('txPage');
   if (txPage && txPage.style.display !== 'none') renderTxScreen();
 }
 
 /* =========================================================
-   MODULE 3 — EXPORT CSV
+   FIX 5 — REAL EXCEL EXPORT USING SheetJS
    ========================================================= */
-function exportCSV() {
+function exportCSV(list) {
+  const rows = (list || financeData.transactions);
   const header = 'merchant,amount,category,date,source';
-  const rows = financeData.transactions.map(tx =>
+  const lines  = rows.map(tx =>
     `"${tx.merchant}",${tx.amount},"${tx.category}","${tx.date}","${tx.source}"`
   );
-  const csv = [header, ...rows].join('\n');
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = 'finance_data.csv'; a.click();
+  const csv = [header, ...lines].join('\n');
+  downloadBlob(csv, 'text/csv;charset=utf-8;', 'finance_data.csv');
+}
+
+function exportExcel(list) {
+  /* FIX 5: Real xlsx via SheetJS — not CSV renamed to .xlsx */
+  const rows = (list || financeData.transactions).map(tx => ({
+    Merchant: tx.merchant,
+    Amount:   tx.amount,
+    Category: tx.category,
+    Date:     tx.date,
+    Source:   tx.source
+  }));
+
+  if (!rows.length) {
+    showToast('No transactions to export', 'warn');
+    return;
+  }
+
+  const ws  = XLSX.utils.json_to_sheet(rows);
+  const wb  = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Transactions');
+
+  /* Column width hints */
+  ws['!cols'] = [
+    { wch: 24 }, // Merchant
+    { wch: 12 }, // Amount
+    { wch: 14 }, // Category
+    { wch: 14 }, // Date
+    { wch: 10 }, // Source
+  ];
+
+  XLSX.writeFile(wb, 'finance_data.xlsx');
+  showToast('Excel exported', 'success');
+}
+
+function downloadBlob(content, type, filename) {
+  const blob = new Blob([content], { type });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
   URL.revokeObjectURL(url);
 }
 
-/* =========================================================
-   MODULE 3 — EXPORT EXCEL (CSV format, .xlsx name)
-   ========================================================= */
-function exportExcel() {
-  const header = 'merchant,amount,category,date,source';
-  const rows = financeData.transactions.map(tx =>
-    `"${tx.merchant}",${tx.amount},"${tx.category}","${tx.date}","${tx.source}"`
-  );
-  const csv = [header, ...rows].join('\n');
-  const blob = new Blob([csv], { type: 'application/vnd.ms-excel;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = 'finance_data.xlsx'; a.click();
-  URL.revokeObjectURL(url);
-}
-
-document.getElementById('exportCsvBtn').addEventListener('click', exportCSV);
-document.getElementById('exportXlsBtn').addEventListener('click', exportExcel);
+document.getElementById('exportCsvBtn').addEventListener('click', () => { exportCSV(); showToast('CSV exported', 'success'); });
+document.getElementById('exportXlsBtn').addEventListener('click', () => exportExcel());
 
 /* =========================================================
-   MODULE 4 — BACKUP DATABASE
+   BACKUP DATABASE
    ========================================================= */
 function backupDatabase() {
   saveData();
   const json = JSON.stringify(financeData, null, 2);
-  const blob = new Blob([json], { type: 'application/json;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = 'vihan_backup.json'; a.click();
-  URL.revokeObjectURL(url);
-
-  const now = new Date();
-  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  financeData.lastBackup = `${String(now.getDate()).padStart(2,'0')} ${MONTHS[now.getMonth()]}`;
+  downloadBlob(json, 'application/json;charset=utf-8;', 'vihan_backup.json');
+  const now   = new Date();
+  const MONS  = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  financeData.lastBackup = `${String(now.getDate()).padStart(2,'0')} ${MONS[now.getMonth()]}`;
   saveData();
   renderHealth();
 }
 
-document.getElementById('backupBtn').addEventListener('click', backupDatabase);
+document.getElementById('backupBtn').addEventListener('click', () => { backupDatabase(); showToast('Backup created!', 'success'); });
 
 /* =========================================================
-   MODULE 5 & 6 — TRANSACTION EDIT + DELETE
+   TRANSACTION EDIT + DELETE
    ========================================================= */
 const modal      = document.getElementById('addModal');
 const modalTitle = document.getElementById('modalTitle');
 const actionRow  = document.getElementById('modalActionRow');
-let editIndex    = -1; // -1 = add mode, ≥0 = edit mode
+let editIndex    = -1;
 
 function openAddModal() {
   editIndex = -1;
   modalTitle.textContent = 'Add Transaction';
-  document.getElementById('fAmount').value   = '';
-  document.getElementById('fMerchant').value = '';
-  document.getElementById('fCategory').value = 'Food';
-  document.getElementById('fAccount').value  = 'HDFC';
-  document.getElementById('fSource').value   = 'Manual';
+  document.getElementById('fAmount').value     = '';
+  document.getElementById('fMerchant').value   = '';
+  document.getElementById('fCategory').value   = 'Food';
+  document.getElementById('fAccount').value    = 'HDFC';
+  document.getElementById('fSource').value     = 'Manual';
   document.getElementById('fDate').valueAsDate = new Date();
   actionRow.innerHTML = `<button class="btn-update" id="saveTxBtn">Add Transaction</button>`;
   document.getElementById('saveTxBtn').addEventListener('click', handleSaveTx);
   modal.classList.add('open');
-  setTimeout(()=>document.getElementById('fAmount').focus(), 320);
+  setTimeout(() => document.getElementById('fAmount').focus(), 320);
 }
 
 function openEditModal(idx) {
@@ -2859,7 +2751,7 @@ function openEditModal(idx) {
   document.getElementById('saveTxBtn').addEventListener('click', handleSaveTx);
   document.getElementById('deleteTxBtn').addEventListener('click', handleDeleteTx);
   modal.classList.add('open');
-  setTimeout(()=>document.getElementById('fAmount').focus(), 320);
+  setTimeout(() => document.getElementById('fAmount').focus(), 320);
 }
 
 function handleSaveTx() {
@@ -2870,32 +2762,27 @@ function handleSaveTx() {
   const dateVal  = document.getElementById('fDate').value;
 
   if (!amount || amount <= 0 || !merchant) {
-    showToast('Please enter a valid amount and merchant name.', 'warn'); return;
+    showToast('Please enter a valid amount and merchant name.', 'warn');
     return;
   }
 
-  const today    = new Date();
-  const selected = dateVal ? new Date(dateVal) : new Date();
-  /* Normalise to midnight for day-diff so time-of-day doesn't skew the count */
+  const today       = new Date();
+  const selected    = dateVal ? new Date(dateVal) : new Date();
   const todayMid    = new Date(today.getFullYear(), today.getMonth(), today.getDate());
   const selectedMid = new Date(selected.getFullYear(), selected.getMonth(), selected.getDate());
-  const diffDays = Math.round((todayMid - selectedMid) / (1000*60*60*24));
-  let dateLabel  = 'Today';
-  if (diffDays === 1)  dateLabel = 'Yesterday';
+  const diffDays    = Math.round((todayMid - selectedMid) / (1000 * 60 * 60 * 24));
+  let dateLabel     = 'Today';
+  if (diffDays === 1) dateLabel = 'Yesterday';
   else if (diffDays > 1) dateLabel = `${diffDays} days ago`;
-
-  /* iso: canonical sortable date stored on every tx */
-  const isoDate = selected.toISOString().slice(0, 10); // "YYYY-MM-DD"
+  const isoDate = selected.toISOString().slice(0, 10);
 
   if (editIndex === -1) {
-    /* ADD */
     financeData.transactions.unshift({ merchant, amount, category, date: dateLabel, isoDate, source });
     financeData.monthSpend += amount;
     financeData.expenses   += amount;
     financeData.balance     = financeData.income - financeData.expenses;
     if (diffDays === 0) financeData.todaySpend += amount;
   } else {
-    /* EDIT — adjust totals by delta */
     const old   = financeData.transactions[editIndex];
     const delta = amount - old.amount;
     financeData.monthSpend += delta;
@@ -2913,45 +2800,28 @@ function handleSaveTx() {
 
 function handleDeleteTx() {
   if (editIndex < 0) return;
-  const old = financeData.transactions[editIndex];
-  financeData.monthSpend -= old.amount;
-  financeData.expenses   -= old.amount;
-  financeData.balance     = financeData.income - financeData.expenses;
-  financeData.transactions.splice(editIndex, 1);
-  saveData();
-  renderAll();
+  moveToTrash(editIndex);
   closeModal();
+  showToast('Moved to trash', 'warn');
 }
 
 /* =========================================================
    MODAL HELPERS
    ========================================================= */
-const modalClose = document.getElementById('modalClose');
-
 function closeModal() { modal.classList.remove('open'); }
-
-modalClose.addEventListener('click', closeModal);
+document.getElementById('modalClose').addEventListener('click', closeModal);
 modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
-
-/* FAB opens add modal */
 document.getElementById('fabBtn').addEventListener('click', openAddModal);
-
-/* Legacy #addTxBtn — reassign to openAddModal for safety */
 const legacyBtn = document.getElementById('addTxBtn');
 if (legacyBtn) legacyBtn.addEventListener('click', handleSaveTx);
 
 /* =========================================================
-   HEADER SEARCH (dashboard widget)
-   Uses getFilteredTransactions once it is defined (deferred
-   via the function's own guard on the search element).
+   HEADER SEARCH
    ========================================================= */
 document.getElementById('searchInput').addEventListener('input', function() {
   const q = this.value.trim().toLowerCase();
-  if (!q) {
-    renderTransactions();
-    return;
-  }
+  if (!q) { renderTransactions(); return; }
   const filtered = financeData.transactions.filter(tx =>
     tx.merchant.toLowerCase().includes(q) ||
     tx.category.toLowerCase().includes(q) ||
@@ -2964,12 +2834,19 @@ document.getElementById('searchInput').addEventListener('input', function() {
    DATE FILTER
    ========================================================= */
 document.getElementById('dateFilter').addEventListener('change', function() {
-  const titles = { today:'Today', month:'Overview — May 2026', last_month:'Overview — April 2026', custom:'Custom Range' };
+  const prevM = new Date(_NOW.getFullYear(), _NOW.getMonth() - 1, 1);
+  const prevMonthName = ['January','February','March','April','May','June','July','August','September','October','November','December'][prevM.getMonth()];
+  const titles = {
+    today:      'Today',
+    month:      'Overview — ' + _CUR_MONTH_LONG + ' ' + _CUR_YEAR,
+    last_month: 'Overview — ' + prevMonthName + ' ' + prevM.getFullYear(),
+    custom:     'Custom Range'
+  };
   document.getElementById('overviewTitle').textContent = titles[this.value] || 'Overview';
 });
 
 /* =========================================================
-   MODULE 7 — SYNC BUTTON (with time update)
+   SYNC BUTTON — FIX 4: increments emailSyncCount each sync
    ========================================================= */
 const syncBtn = document.getElementById('syncBtn');
 syncBtn.addEventListener('click', () => {
@@ -2982,9 +2859,10 @@ syncBtn.addEventListener('click', () => {
 
     const now  = new Date();
     const MONS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    const padN = n => String(n).padStart(2,'0');
-    const syncStr = `${padN(now.getDate())} ${MONS[now.getMonth()]} ${padN(now.getHours())}:${padN(now.getMinutes())}`;
-    financeData.lastEmailSync = syncStr;
+    const padN = n => String(n).padStart(2, '0');
+    financeData.lastEmailSync = `${padN(now.getDate())} ${MONS[now.getMonth()]} ${padN(now.getHours())}:${padN(now.getMinutes())}`;
+    /* FIX 4: track and persist actual sync count */
+    financeData.emailSyncCount = (financeData.emailSyncCount || 0) + 1;
     saveData();
     renderHealth();
 
@@ -3009,31 +2887,22 @@ const PAGE_MAP = {
   database:     'dbPage',
   rules:        'rulesPage'
 };
-
 const NAV_PAGES = ['dashboard','transactions','people','reports','settings'];
 
 function showPage(page) {
-  /* Hide all */
   Object.values(PAGE_MAP).forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = 'none';
   });
-
-  /* Show target */
   const target = PAGE_MAP[page];
   if (target) {
     const el = document.getElementById(target);
-    if (el) el.style.display = (page === 'dashboard') ? 'block' : 'block';
+    if (el) el.style.display = 'block';
   }
-
-  /* Update nav active state */
   document.querySelectorAll('.nav-item').forEach((item, idx) => {
-    const navPages = NAV_PAGES;
-    item.classList.toggle('active', navPages[idx] === page);
-    item.toggleAttribute('aria-current', navPages[idx] === page);
+    item.classList.toggle('active', NAV_PAGES[idx] === page);
+    item.toggleAttribute('aria-current', NAV_PAGES[idx] === page);
   });
-
-  /* Run screen-specific init */
   if (page === 'transactions') renderTxScreen();
   if (page === 'reports')      renderReports();
   if (page === 'people')       renderPeople();
@@ -3042,38 +2911,15 @@ function showPage(page) {
   if (page === 'trash')        renderTrash();
   if (page === 'database')     renderDbInfo();
   if (page === 'rules')        renderRules();
-
-  window.scrollTo({top:0, behavior:'smooth'});
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 /* =========================================================
-   DATA EXTENSION — ensure extra fields exist
-   ========================================================= */
-if (!financeData.people) {
-  financeData.people = [
-    { name:'Mother', role:'Family', color:'#E91E63', emoji:'👩', txns:[] },
-    { name:'Father', role:'Family', color:'#1565C0', emoji:'👨', txns:[] },
-    { name:'Wife',   role:'Partner', color:'#9C27B0', emoji:'💑', txns:[] },
-    { name:'Sister', role:'Family', color:'#FF5722', emoji:'👧', txns:[] }
-  ];
-}
-if (!financeData.trash)    financeData.trash = [];
-if (!financeData.rules)    financeData.rules = [
-  { keyword:'Swiggy',  category:'Food' },
-  { keyword:'Amazon',  category:'Shopping' },
-  { keyword:'IndianOil', category:'Fuel' }
-];
-
-saveData();
-
-/* =========================================================
-   BACKFILL isoDate on legacy / seed transactions
-   Transactions without isoDate get one derived from their
-   display label so date-sorting works from the first load.
+   BACKFILL isoDate on legacy transactions
    ========================================================= */
 (function backfillIsoDates() {
-  const now   = new Date();
-  const pad   = n => String(n).padStart(2, '0');
+  const now = new Date();
+  const pad = n => String(n).padStart(2, '0');
   const toISO = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
   let changed = false;
   financeData.transactions.forEach(tx => {
@@ -3092,14 +2938,10 @@ saveData();
 })();
 
 /* =========================================================
-   SCREEN 1 — TRANSACTIONS  (filter engine)
+   SCREEN 1 — TRANSACTIONS (filter engine)
    ========================================================= */
-
-/* ---- Canonical sort helper --------------------------------
-   Uses isoDate when available; falls back to display label.  */
 function txSortKey(tx) {
-  if (tx.isoDate) return tx.isoDate; // "YYYY-MM-DD" sorts lexicographically
-  // Fallback for any tx without isoDate (shouldn't happen post-backfill)
+  if (tx.isoDate) return tx.isoDate;
   const lbl = (tx.date || '').toLowerCase();
   const now  = new Date();
   const pad  = n => String(n).padStart(2, '0');
@@ -3109,9 +2951,6 @@ function txSortKey(tx) {
   return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
 }
 
-/* ---- Central filter + sort function ----------------------
-   Used by: renderTxScreen, export buttons, renderTransactions (dashboard).
-   Pass a context object to control which filters are active.  */
 function getFilteredTransactions(ctx) {
   ctx = ctx || {};
   const search   = (ctx.search   !== undefined ? ctx.search   : (document.getElementById('txSearch')?.value  || '')).toLowerCase().trim();
@@ -3122,27 +2961,18 @@ function getFilteredTransactions(ctx) {
   const now        = new Date();
   const todayISO   = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
   const thisYear   = now.getFullYear();
-  const thisMonth  = now.getMonth(); // 0-based
-
-  // Build last-month boundaries
-  const lastMonthDate  = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  const lastMonthY     = lastMonthDate.getFullYear();
-  const lastMonthM     = lastMonthDate.getMonth();
+  const thisMonth  = now.getMonth();
+  const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const lastMonthY = lastMonthDate.getFullYear();
+  const lastMonthM = lastMonthDate.getMonth();
 
   let result = financeData.transactions.filter(tx => {
-    // --- text search ---
     if (search) {
       const haystack = `${tx.merchant} ${tx.category} ${tx.amount}`.toLowerCase();
       if (!haystack.includes(search)) return false;
     }
-
-    // --- category ---
     if (category !== 'All' && tx.category !== category) return false;
-
-    // --- account ---
-    if (account !== 'All' && (tx.account || '') !== account) return false;
-
-    // --- date filter ---
+    if (account  !== 'All' && (tx.account || '') !== account) return false;
     if (dateF !== 'all') {
       const iso = tx.isoDate || txSortKey(tx);
       if (dateF === 'today') {
@@ -3155,52 +2985,39 @@ function getFilteredTransactions(ctx) {
         if (y !== lastMonthY || mo - 1 !== lastMonthM) return false;
       }
     }
-
     return true;
   });
 
-  // Sort newest → oldest using isoDate
   result.sort((a, b) => {
-    const ka = txSortKey(a);
-    const kb = txSortKey(b);
+    const ka = txSortKey(a), kb = txSortKey(b);
     if (kb > ka) return 1;
     if (kb < ka) return -1;
     return 0;
   });
-
   return result;
 }
 
-/* Alias kept for legacy export-button callers */
 const getTxFiltered = getFilteredTransactions;
 
-/* ---- Render the Transactions screen ---------------------- */
 function renderTxScreen() {
   const container = document.getElementById('allTxList');
   if (!container) return;
-
   const allFiltered = getFilteredTransactions();
-  const display     = allFiltered.slice(0, 300); // performance cap
-
-  // Update the badge inside the Transactions screen panel header
-  const badge = document.getElementById('txCountBadge');
+  const display     = allFiltered.slice(0, 300);
+  const badge       = document.getElementById('txCountBadge');
   if (badge) badge.textContent = allFiltered.length + ' records';
-
-  // Also keep the dashboard "X transactions this month" sub-label in sync
   const sub = document.getElementById('txCountSub');
-  if (sub) sub.textContent = financeData.transactions.length + ' transactions this month';
+  if (sub) sub.textContent = financeData.transactions.length + ' transaction' + (financeData.transactions.length !== 1 ? 's' : '') + ' this month';
 
   if (!display.length) {
     container.innerHTML = '<div class="tx-empty">No transactions match your filters.</div>';
     return;
   }
-
   container.innerHTML = display.map((tx, i) => {
     const realIdx = financeData.transactions.indexOf(tx);
     const meta    = CATEGORY_META[tx.category] || CATEGORY_META['Other'];
     return `
-      <div class="tx-row" data-idx="${realIdx}" tabindex="0"
-           role="listitem"
+      <div class="tx-row" data-idx="${realIdx}" tabindex="0" role="listitem"
            aria-label="${tx.merchant}, ${tx.category}, ${tx.date}, minus ${tx.amount} rupees"
            style="animation:fadeUp 0.18s ${Math.min(i,20)*0.022}s ease both;">
         <div class="tx-icon" style="background:${meta.bg};" aria-hidden="true">${meta.icon}</div>
@@ -3227,107 +3044,95 @@ function renderTxScreen() {
   });
 }
 
-/* Live filter listeners — attached once, fire renderTxScreen */
 ['txSearch', 'txCatFilter', 'txDateFilter', 'txAccFilter'].forEach(id => {
   const el = document.getElementById(id);
   if (!el) return;
   if (id === 'txSearch') {
-    let _dbT; el.addEventListener('input', ()=>{clearTimeout(_dbT); _dbT=setTimeout(renderTxScreen, 200);});
+    let _dbT;
+    el.addEventListener('input', () => { clearTimeout(_dbT); _dbT = setTimeout(renderTxScreen, 200); });
   } else {
     el.addEventListener('change', renderTxScreen);
   }
 });
 
-/* Export filtered */
+/* FIX 5: Export filtered — use real xlsx for Excel button */
 document.getElementById('txExportCsv')?.addEventListener('click', () => {
-  const list = getTxFiltered();
-  const csv = ['merchant,amount,category,date,source',
-    ...list.map(tx=>`"${tx.merchant}",${tx.amount},"${tx.category}","${tx.date}","${tx.source}"`)
-  ].join('\n');
-  downloadBlob(csv, 'text/csv', 'filtered_transactions.csv');
+  exportCSV(getTxFiltered());
+  showToast('CSV exported', 'success');
 });
 
 document.getElementById('txExportXls')?.addEventListener('click', () => {
-  const list = getTxFiltered();
-  const csv = ['merchant,amount,category,date,source',
-    ...list.map(tx=>`"${tx.merchant}",${tx.amount},"${tx.category}","${tx.date}","${tx.source}"`)
-  ].join('\n');
-  downloadBlob(csv, 'application/vnd.ms-excel', 'filtered_transactions.xlsx');
+  exportExcel(getTxFiltered());
 });
-
-function downloadBlob(content, type, filename) {
-  const blob = new Blob([content],{type});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href=url; a.download=filename; a.click();
-  URL.revokeObjectURL(url);
-}
 
 /* =========================================================
    SCREEN 2 — REPORTS
    ========================================================= */
 const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-const MONTH_MOCK_DATA = [
-  {m:'Jan',income:40000,expenses:22000,invest:5000},
-  {m:'Feb',income:40000,expenses:24500,invest:5000},
-  {m:'Mar',income:40000,expenses:19800,invest:5000},
-  {m:'Apr',income:40000,expenses:23200,invest:5000},
-  {m:'May',income:40000,expenses:0,invest:0}
-];
+const _CUR_MONTH_IDX = _NOW.getMonth();
+
+function _buildMonthMockData() {
+  return MONTHS_SHORT.map((m, i) => ({ m, income: 0, expenses: 0, invest: 0, _idx: i }));
+}
+let MONTH_MOCK_DATA = _buildMonthMockData();
 
 function renderReports() {
-  /* Summary stats */
-  const totalExp  = financeData.expenses;
-  const totalInv  = financeData.investments.reduce((s,i)=>s+i.amount,0);
+  const totalExp = financeData.expenses;
+  const totalInv = financeData.investments.reduce((s,i) => s + i.amount, 0);
+  /* FIX 1: Balance never has divide-by-zero risk but kept safe */
   const bal = financeData.income - totalExp;
   document.getElementById('rIncome').textContent     = fmtFull(financeData.income);
   document.getElementById('rExpense').textContent    = fmtFull(totalExp);
   document.getElementById('rInvestment').textContent = fmtFull(totalInv);
   document.getElementById('rBalance').textContent    = fmtFull(bal);
-  document.getElementById('rBalance').style.color    = bal>=0?'var(--green)':'var(--red)';
+  document.getElementById('rBalance').style.color    = bal >= 0 ? 'var(--green)' : 'var(--red)';
 
-  /* Bar chart — use mock monthly data + this month actual */
-  const thisMonth = MONTH_MOCK_DATA.findIndex(r=>r.m==='May');
-  MONTH_MOCK_DATA[thisMonth].expenses = financeData.monthSpend;
-  MONTH_MOCK_DATA[thisMonth].invest   = totalInv;
-  const maxVal = Math.max(...MONTH_MOCK_DATA.map(r=>r.expenses||0),1);
+  MONTH_MOCK_DATA = _buildMonthMockData();
+  MONTH_MOCK_DATA[_CUR_MONTH_IDX].expenses = financeData.monthSpend;
+  MONTH_MOCK_DATA[_CUR_MONTH_IDX].invest   = totalInv;
+  MONTH_MOCK_DATA[_CUR_MONTH_IDX].income   = financeData.income;
 
-  const chart = document.getElementById('monthlyBarChart');
+  const yrEl = document.getElementById('yearSummaryHeadingYear');
+  if (yrEl) yrEl.textContent = _CUR_YEAR;
+
+  const maxVal = Math.max(...MONTH_MOCK_DATA.map(r => r.expenses || 0), 1);
+  const chart  = document.getElementById('monthlyBarChart');
   if (chart) {
-    chart.innerHTML = MONTH_MOCK_DATA.map(r=>{
-      const h = Math.max(8, Math.round(((r.expenses||0)/maxVal)*120));
+    const visibleMonths = MONTH_MOCK_DATA.filter(r => r._idx <= _CUR_MONTH_IDX);
+    chart.innerHTML = visibleMonths.map(r => {
+      const isCur = r._idx === _CUR_MONTH_IDX;
+      const h = Math.max(8, Math.round(((r.expenses || 0) / maxVal) * 120));
       return `
         <div class="bar-col">
-          <div class="bar-val">${r.expenses?fmt(r.expenses):''}</div>
-          <div class="bar-fill" style="height:${h}px;background:linear-gradient(to top, ${r.m==='May'?'#1D4ED8':'#BFDBFE'}, ${r.m==='May'?'#3B82F6':'#DBEAFE'});border-radius:5px 5px 0 0;"></div>
+          <div class="bar-val">${r.expenses ? fmt(r.expenses) : ''}</div>
+          <div class="bar-fill" style="height:${h}px;background:linear-gradient(to top, ${isCur?'#1D4ED8':'#BFDBFE'}, ${isCur?'#3B82F6':'#DBEAFE'});border-radius:5px 5px 0 0;"></div>
           <div class="bar-label">${r.m}</div>
         </div>`;
     }).join('');
   }
 
-  /* Category donut (reuse existing renderDonut logic) */
-  const totals  = calcKakeibo();
-  const grandTotal = Object.values(totals).reduce((a,b)=>a+b,0)||1;
-  const groups  = Object.entries(KAKEIBO_GROUPS);
-  const rSvg    = document.getElementById('reportDonutSvg');
+  const totals     = calcKakeibo();
+  const grandTotal = Object.values(totals).reduce((a,b) => a+b, 0) || 1;
+  const groups     = Object.entries(KAKEIBO_GROUPS);
+  const rSvg       = document.getElementById('reportDonutSvg');
   if (rSvg) {
-    [...rSvg.querySelectorAll('.donut-seg')].forEach(s=>s.remove());
-    let offset=0;
-    groups.forEach(([g,meta],i)=>{
-      const dash=(totals[g]/grandTotal)*CIRC;
-      const c=document.createElementNS('http://www.w3.org/2000/svg','circle');
-      c.setAttribute('cx',84);c.setAttribute('cy',84);c.setAttribute('r',62);
-      c.setAttribute('fill','none');c.setAttribute('stroke',meta.color);c.setAttribute('stroke-width',22);
-      c.setAttribute('stroke-dasharray',`0 ${CIRC}`);c.setAttribute('stroke-dashoffset',-offset);
-      c.setAttribute('transform','rotate(-90 84 84)');c.classList.add('donut-seg');
+    [...rSvg.querySelectorAll('.donut-seg')].forEach(s => s.remove());
+    let offset = 0;
+    groups.forEach(([g, meta], i) => {
+      const dash = (totals[g] / grandTotal) * CIRC;
+      const c    = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      c.setAttribute('cx',84); c.setAttribute('cy',84); c.setAttribute('r',62);
+      c.setAttribute('fill','none'); c.setAttribute('stroke',meta.color); c.setAttribute('stroke-width',22);
+      c.setAttribute('stroke-dasharray',`0 ${CIRC}`); c.setAttribute('stroke-dashoffset',-offset);
+      c.setAttribute('transform','rotate(-90 84 84)'); c.classList.add('donut-seg');
       c.style.setProperty('--target-dash',`${dash} ${CIRC}`);
-      c.style.animationDelay=(0.3+i*0.2)+'s';
-      rSvg.appendChild(c);offset+=dash;
+      c.style.animationDelay = (0.3 + i * 0.2) + 's';
+      rSvg.appendChild(c); offset += dash;
     });
-    document.getElementById('reportDonutTotal').textContent=fmt(grandTotal);
-    const rLegend=document.getElementById('reportDonutLegend');
-    rLegend.innerHTML=groups.map(([g,meta])=>{
-      const pct=Math.round((totals[g]/grandTotal)*100);
+    document.getElementById('reportDonutTotal').textContent = fmt(grandTotal);
+    const rLegend = document.getElementById('reportDonutLegend');
+    rLegend.innerHTML = groups.map(([g, meta]) => {
+      const pct = Math.round((totals[g] / grandTotal) * 100);
       return `<div class="legend-item"><div class="legend-dot" style="background:${meta.color}"></div>
         <div class="legend-info">
           <div class="legend-name">${g} <span class="legend-pct">${pct}%</span></div>
@@ -3336,26 +3141,28 @@ function renderReports() {
     }).join('');
   }
 
-  /* Year summary table */
   const tbody = document.getElementById('yearTableBody');
   if (tbody) {
-    tbody.innerHTML = MONTH_MOCK_DATA.map(r=>{
-      const savings = (r.income||0) - (r.expenses||0) - (r.invest||0);
+    const tableMonths = MONTH_MOCK_DATA.filter(r => r._idx <= _CUR_MONTH_IDX);
+    tbody.innerHTML = tableMonths.length ? tableMonths.map(r => {
+      const savings = (r.income || 0) - (r.expenses || 0) - (r.invest || 0);
+      const isCur   = r._idx === _CUR_MONTH_IDX;
       return `<tr>
-        <td><strong>${r.m}</strong></td>
-        <td style="color:var(--green)">${r.income?fmtFull(r.income):'—'}</td>
-        <td style="color:var(--red)">${r.expenses?fmtFull(r.expenses):'—'}</td>
-        <td style="color:var(--blue)">${r.invest?fmtFull(r.invest):'—'}</td>
-        <td style="color:${savings>=0?'var(--green)':'var(--red)'}">${r.income?fmtFull(savings):'—'}</td>
+        <td><strong>${r.m}</strong>${isCur?' <span style="font-size:10px;color:var(--blue);font-family:DM Sans,sans-serif;">(current)</span>':''}</td>
+        <td style="color:var(--green)">${r.income   ? fmtFull(r.income)   : '—'}</td>
+        <td style="color:var(--red)">${r.expenses  ? fmtFull(r.expenses)  : '—'}</td>
+        <td style="color:var(--blue)">${r.invest   ? fmtFull(r.invest)    : '—'}</td>
+        <td style="color:${savings >= 0 ? 'var(--green)' : 'var(--red)'}">${r.income ? fmtFull(savings) : '—'}</td>
       </tr>`;
-    }).join('');
+    }).join('') : '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px;">No data yet for ' + _CUR_YEAR + '</td></tr>';
   }
 }
 
-/* Report export */
-document.getElementById('reportExportCsv')?.addEventListener('click', ()=>{
-  const rows = MONTH_MOCK_DATA.map(r=>`${r.m},${r.income||0},${r.expenses||0},${r.invest||0},${(r.income||0)-(r.expenses||0)-(r.invest||0)}`);
-  downloadBlob(['Month,Income,Expenses,Investment,Savings',...rows].join('\n'),'text/csv','report_2026.csv');
+document.getElementById('reportExportCsv')?.addEventListener('click', () => {
+  const rows = MONTH_MOCK_DATA.filter(r => r._idx <= _CUR_MONTH_IDX)
+    .map(r => `${r.m},${r.income||0},${r.expenses||0},${r.invest||0},${(r.income||0)-(r.expenses||0)-(r.invest||0)}`);
+  downloadBlob(['Month,Income,Expenses,Investment,Savings',...rows].join('\n'), 'text/csv', 'report_' + _CUR_YEAR + '.csv');
+  showToast('Report exported', 'success');
 });
 
 /* =========================================================
@@ -3366,18 +3173,22 @@ const PERSON_COLORS = ['#E91E63','#1565C0','#9C27B0','#FF5722'];
 function renderPeople() {
   const grid = document.getElementById('peopleGrid');
   if (!grid) return;
-  grid.innerHTML = financeData.people.map((p,pi)=>{
-    const given    = p.txns.filter(t=>t.type==='given').reduce((s,t)=>s+t.amount,0);
-    const received = p.txns.filter(t=>t.type==='received').reduce((s,t)=>s+t.amount,0);
-    const last     = p.txns.length ? p.txns[p.txns.length-1] : null;
-    const initials = p.name.split(' ').map(w=>w[0]).join('').toUpperCase();
+  if (!financeData.people.length) {
+    grid.innerHTML = '<div class="tx-empty" style="grid-column:1/-1;padding:40px 0;">No people added yet.</div>';
+    return;
+  }
+  grid.innerHTML = financeData.people.map((p, pi) => {
+    const given    = p.txns.filter(t => t.type === 'given').reduce((s,t) => s + t.amount, 0);
+    const received = p.txns.filter(t => t.type === 'received').reduce((s,t) => s + t.amount, 0);
+    const last     = p.txns.length ? p.txns[p.txns.length - 1] : null;
+    const initials = p.name.split(' ').map(w => w[0]).join('').toUpperCase();
     return `
       <div class="person-card" onclick="openPersonModal(${pi})">
         <div class="person-header">
-          <div class="person-avatar" style="background:${p.color||PERSON_COLORS[pi%4]}">${p.emoji||initials}</div>
+          <div class="person-avatar" style="background:${p.color || PERSON_COLORS[pi % 4]}">${p.emoji || initials}</div>
           <div>
             <div class="person-name">${p.name}</div>
-            <div class="person-role">${p.role||'Family'} · ${p.txns.length} transaction${p.txns.length!==1?'s':''}</div>
+            <div class="person-role">${p.role || 'Family'} · ${p.txns.length} transaction${p.txns.length !== 1 ? 's' : ''}</div>
           </div>
         </div>
         <div class="person-stats">
@@ -3392,7 +3203,7 @@ function renderPeople() {
           <div style="grid-column:1/-1">
             <div class="person-stat-label">Last Transaction</div>
             <div class="person-stat-value" style="font-size:12px;font-family:'DM Sans',sans-serif">
-              ${last ? `${last.type==='given'?'Gave':'Got'} ${fmtFull(last.amount)} — ${last.note||''}` : 'None yet'}
+              ${last ? `${last.type === 'given' ? 'Gave' : 'Got'} ${fmtFull(last.amount)} — ${last.note || ''}` : 'None yet'}
             </div>
           </div>
         </div>
@@ -3408,47 +3219,43 @@ function openPersonModal(idx) {
   if (!p.txns.length) {
     body.innerHTML = '<div class="tx-empty">No transactions yet.</div>';
   } else {
-    body.innerHTML = p.txns.slice().reverse().map(t=>`
+    body.innerHTML = p.txns.slice().reverse().map(t => `
       <div class="tx-row">
-        <div class="tx-icon" style="background:${t.type==='given'?'var(--red-light)':'var(--green-light)'}">
-          ${t.type==='given'?'💸':'💰'}
-        </div>
+        <div class="tx-icon" style="background:${t.type === 'given' ? 'var(--red-light)' : 'var(--green-light)'}">${t.type === 'given' ? '💸' : '💰'}</div>
         <div class="tx-info">
-          <div class="tx-name">${t.note||'Transaction'}</div>
-          <div class="tx-meta">${t.date||'—'} · ${t.type==='given'?'Given':'Received'}</div>
+          <div class="tx-name">${t.note || 'Transaction'}</div>
+          <div class="tx-meta">${t.date || '—'} · ${t.type === 'given' ? 'Given' : 'Received'}</div>
         </div>
         <div class="tx-right">
-          <div class="tx-amount" style="color:${t.type==='given'?'var(--red)':'var(--green)'}">
-            ${t.type==='given'?'−':'+'} ${fmtFull(t.amount)}
-          </div>
+          <div class="tx-amount" style="color:${t.type === 'given' ? 'var(--red)' : 'var(--green)'}">${t.type === 'given' ? '−' : '+'} ${fmtFull(t.amount)}</div>
         </div>
       </div>`).join('');
   }
   document.getElementById('personModal').classList.add('open');
 }
 
-document.getElementById('personModalClose')?.addEventListener('click',()=>{
+document.getElementById('personModalClose')?.addEventListener('click', () => {
   document.getElementById('personModal').classList.remove('open');
 });
-document.getElementById('personModal')?.addEventListener('click',e=>{
-  if(e.target===e.currentTarget) e.currentTarget.classList.remove('open');
+document.getElementById('personModal')?.addEventListener('click', e => {
+  if (e.target === e.currentTarget) e.currentTarget.classList.remove('open');
 });
 
-document.getElementById('addPersonTxBtn')?.addEventListener('click',()=>{
+document.getElementById('addPersonTxBtn')?.addEventListener('click', () => {
   const name   = document.getElementById('pPerson').value;
   const amount = parseFloat(document.getElementById('pAmount').value);
   const type   = document.getElementById('pType').value;
   const note   = document.getElementById('pNote').value.trim();
-  if (!amount || amount<=0) { showToast('Enter a valid amount', 'warn'); return; return; }
-  const pidx = financeData.people.findIndex(p=>p.name===name);
-  if (pidx<0) return;
-  const today = new Date();
+  if (!amount || amount <= 0) { showToast('Enter a valid amount', 'warn'); return; }
+  const pidx = financeData.people.findIndex(p => p.name === name);
+  if (pidx < 0) return;
+  const today   = new Date();
   const dateStr = `${String(today.getDate()).padStart(2,'0')} ${MONTHS_SHORT[today.getMonth()]}`;
-  financeData.people[pidx].txns.push({amount,type,note,date:dateStr});
+  financeData.people[pidx].txns.push({ amount, type, note, date: dateStr });
   saveData();
   renderPeople();
-  document.getElementById('pAmount').value='';
-  document.getElementById('pNote').value='';
+  document.getElementById('pAmount').value = '';
+  document.getElementById('pNote').value   = '';
   showToast('Transaction added for ' + name, 'success');
 });
 
@@ -3457,11 +3264,19 @@ document.getElementById('addPersonTxBtn')?.addEventListener('click',()=>{
    ========================================================= */
 function renderSettings() {
   const el = document.getElementById('sLastSync');
-  if (el) el.textContent = financeData.lastEmailSync||'—';
-  const map = {auto:0, light:1, dark:2};
+  if (el) el.textContent = financeData.lastEmailSync || '—';
+
+  /* FIX 4: show actual email count in settings panel */
+  const sc = document.getElementById('sEmailCount');
+  if (sc) {
+    const count = financeData.emailSyncCount || 0;
+    sc.textContent = count + ' email' + (count !== 1 ? 's' : '');
+  }
+
+  const map  = { auto: 0, light: 1, dark: 2 };
   const btns = document.querySelectorAll('.theme-btn');
   if (btns.length && typeof _theme !== 'undefined') {
-    btns.forEach(b=>b.classList.remove('active'));
+    btns.forEach(b => b.classList.remove('active'));
     if (btns[map[_theme]]) btns[map[_theme]].classList.add('active');
   }
 }
@@ -3472,25 +3287,29 @@ function setTheme(t, btn) {
   _theme = t;
   localStorage.setItem('vihanTheme', t);
   _applyTheme(t);
-  document.querySelectorAll('.theme-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
   if (btn) btn.classList.add('active');
   showToast('Theme set to ' + t, 'success', 1800);
 }
 
-document.getElementById('sBackupBtn')?.addEventListener('click', backupDatabase);
-document.getElementById('sExportCsv')?.addEventListener('click', exportCSV);
-document.getElementById('sExportXls')?.addEventListener('click', exportExcel);
+document.getElementById('sBackupBtn')?.addEventListener('click', () => { backupDatabase(); showToast('Backup created!', 'success'); });
+document.getElementById('sExportCsv')?.addEventListener('click', () => { exportCSV(); showToast('CSV exported', 'success'); });
+document.getElementById('sExportXls')?.addEventListener('click', () => exportExcel());
 
-document.getElementById('sSyncBtn')?.addEventListener('click', ()=>{
+document.getElementById('sSyncBtn')?.addEventListener('click', () => {
   const btn = document.getElementById('sSyncBtn');
-  btn.textContent = 'Syncing…'; btn.disabled=true;
-  setTimeout(()=>{
-    const now=new Date();
-    const s=`${String(now.getDate()).padStart(2,'0')} ${MONTHS_SHORT[now.getMonth()]} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-    financeData.lastEmailSync=s; saveData(); renderSettings(); renderHealth();
-    btn.textContent='✓ Synced'; btn.disabled=false;
-    setTimeout(()=>{ btn.textContent='Sync Now'; },3000);
-  },2000);
+  btn.textContent = 'Syncing…'; btn.disabled = true;
+  setTimeout(() => {
+    const now = new Date();
+    const s   = `${String(now.getDate()).padStart(2,'0')} ${MONTHS_SHORT[now.getMonth()]} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+    financeData.lastEmailSync  = s;
+    financeData.emailSyncCount = (financeData.emailSyncCount || 0) + 1;
+    saveData();
+    renderSettings();
+    renderHealth();
+    btn.textContent = '✓ Synced'; btn.disabled = false;
+    setTimeout(() => { btn.textContent = 'Sync Now'; }, 3000);
+  }, 2000);
 });
 
 /* =========================================================
@@ -3499,25 +3318,32 @@ document.getElementById('sSyncBtn')?.addEventListener('click', ()=>{
 function renderInvPage() {
   const types = ['SIP','Insurance','Gold','RD'];
   const ids   = ['invSipTotal','invInsTotal','invGoldTotal','invRdTotal'];
-  types.forEach((t,i)=>{
-    const total = financeData.investments.filter(inv=>inv.type===t).reduce((s,inv)=>s+inv.amount,0);
+  types.forEach((t, i) => {
+    const total = financeData.investments.filter(inv => inv.type === t).reduce((s, inv) => s + inv.amount, 0);
     document.getElementById(ids[i]).textContent = fmtFull(total);
   });
 
   const list = document.getElementById('invList');
   if (!list) return;
-  if (!financeData.investments.filter(i=>i.amount>0).length) {
-    list.innerHTML='<div class="tx-empty">No investments recorded yet.</div>';
+  const activeInv = financeData.investments.filter(i => i.amount > 0);
+  if (!activeInv.length) {
+    list.innerHTML = '<div class="tx-empty">No investments recorded yet.</div>';
   } else {
-    list.innerHTML = financeData.investments.filter(i=>i.amount>0).map((inv,i)=>{
-      const meta = {SIP:{icon:'📈',color:'var(--blue)'},Insurance:{icon:'🛡️',color:'var(--green)'},Gold:{icon:'🥇',color:'var(--amber)'},RD:{icon:'🏦',color:'var(--purple)'},Other:{icon:'💼',color:'var(--muted)'}};
-      const m = meta[inv.type]||meta.Other;
+    const meta = {
+      SIP:       { icon:'📈', color:'var(--blue)' },
+      Insurance: { icon:'🛡️', color:'var(--green)' },
+      Gold:      { icon:'🥇', color:'var(--amber)' },
+      RD:        { icon:'🏦', color:'var(--purple)' },
+      Other:     { icon:'💼', color:'var(--muted)' }
+    };
+    list.innerHTML = activeInv.map(inv => {
+      const m = meta[inv.type] || meta.Other;
       return `
         <div class="tx-row">
           <div class="tx-icon" style="background:var(--bg);border:1px solid var(--border)">${m.icon}</div>
           <div class="tx-info">
             <div class="tx-name">${inv.type}</div>
-            <div class="tx-meta">${inv.date} · ${inv.frequency||'One-time'}</div>
+            <div class="tx-meta">${inv.date} · ${inv.frequency || 'One-time'}</div>
           </div>
           <div class="tx-right">
             <div class="tx-amount" style="color:${m.color}">${fmtFull(inv.amount)}</div>
@@ -3526,30 +3352,31 @@ function renderInvPage() {
     }).join('');
   }
 
-  /* Set today's date */
   const df = document.getElementById('invDate');
   if (df && !df.value) df.valueAsDate = new Date();
 }
 
-document.getElementById('addInvBtn')?.addEventListener('click',()=>{
-  const type   = document.getElementById('invType').value;
-  const amount = parseFloat(document.getElementById('invAmount').value);
-  const freq   = document.getElementById('invFreq').value;
-  const dateVal= document.getElementById('invDate').value;
-  if (!amount||amount<=0) { showToast('Enter a valid amount', 'warn'); return; return; }
-  const d = dateVal ? new Date(dateVal) : new Date();
+document.getElementById('addInvBtn')?.addEventListener('click', () => {
+  const type    = document.getElementById('invType').value;
+  const amount  = parseFloat(document.getElementById('invAmount').value);
+  const freq    = document.getElementById('invFreq').value;
+  const dateVal = document.getElementById('invDate').value;
+  if (!amount || amount <= 0) { showToast('Enter a valid amount', 'warn'); return; }
+  const d       = dateVal ? new Date(dateVal) : new Date();
   const dateStr = `${String(d.getDate()).padStart(2,'0')} ${MONTHS_SHORT[d.getMonth()]}`;
-  financeData.investments.push({type,amount,date:dateStr,frequency:freq});
+  financeData.investments.push({ type, amount, date: dateStr, frequency: freq });
   saveData();
   renderInvPage();
   renderInvestments();
-  document.getElementById('invAmount').value='';
+  document.getElementById('invAmount').value = '';
   showToast('Investment added', 'success');
 });
 
-document.getElementById('invExportCsv')?.addEventListener('click',()=>{
-  const rows = financeData.investments.map(inv=>`"${inv.type}",${inv.amount},"${inv.date}","${inv.frequency||''}"`);
-  downloadBlob(['type,amount,date,frequency',...rows].join('\n'),'text/csv','investments.csv');
+document.getElementById('invExportCsv')?.addEventListener('click', () => {
+  const rows = financeData.investments.map(inv =>
+    `"${inv.type}",${inv.amount},"${inv.date}","${inv.frequency || ''}"`);
+  downloadBlob(['type,amount,date,frequency', ...rows].join('\n'), 'text/csv', 'investments.csv');
+  showToast('Investments exported', 'success');
 });
 
 /* =========================================================
@@ -3558,40 +3385,39 @@ document.getElementById('invExportCsv')?.addEventListener('click',()=>{
 function moveToTrash(idx) {
   const tx = financeData.transactions[idx];
   if (!tx) return;
-  const deletedAt = new Date().toISOString();
-  financeData.trash.push({...tx, deletedAt});
+  financeData.trash.push({ ...tx, deletedAt: new Date().toISOString() });
   financeData.monthSpend -= tx.amount;
   financeData.expenses   -= tx.amount;
   financeData.balance     = financeData.income - financeData.expenses;
-  financeData.transactions.splice(idx,1);
-  saveData(); renderAll();
+  financeData.transactions.splice(idx, 1);
+  saveData();
+  renderAll();
 }
 
 function renderTrash() {
-  /* Purge items older than 30 days */
   const now = Date.now();
-  financeData.trash = financeData.trash.filter(t=>{
-    return !t.deletedAt || (now - new Date(t.deletedAt).getTime()) < 30*24*60*60*1000;
-  });
+  financeData.trash = financeData.trash.filter(t =>
+    !t.deletedAt || (now - new Date(t.deletedAt).getTime()) < 30 * 24 * 60 * 60 * 1000
+  );
   saveData();
 
-  const list = document.getElementById('trashList');
+  const list  = document.getElementById('trashList');
   const badge = document.getElementById('trashCountBadge');
   if (badge) badge.textContent = financeData.trash.length + ' items';
   if (!list) return;
   if (!financeData.trash.length) {
-    list.innerHTML='<div class="tx-empty">Trash is empty.</div>';
+    list.innerHTML = '<div class="tx-empty">Trash is empty.</div>';
     return;
   }
-  list.innerHTML = financeData.trash.map((tx,i)=>{
-    const meta = CATEGORY_META[tx.category]||CATEGORY_META.Other;
-    const daysAgo = tx.deletedAt ? Math.floor((now-new Date(tx.deletedAt).getTime())/(1000*60*60*24)) : 0;
+  list.innerHTML = financeData.trash.map((tx, i) => {
+    const meta    = CATEGORY_META[tx.category] || CATEGORY_META.Other;
+    const daysAgo = tx.deletedAt ? Math.floor((now - new Date(tx.deletedAt).getTime()) / (1000 * 60 * 60 * 24)) : 0;
     return `
       <div class="trash-row">
         <div class="tx-icon" style="background:${meta.bg};opacity:0.7">${meta.icon}</div>
         <div class="trash-info">
           <div class="trash-name">${tx.merchant}</div>
-          <div class="trash-meta">${tx.category} · Deleted ${daysAgo===0?'today':daysAgo+' days ago'} · Auto-delete in ${30-daysAgo}d</div>
+          <div class="trash-meta">${tx.category} · Deleted ${daysAgo === 0 ? 'today' : daysAgo + ' days ago'} · Auto-delete in ${30 - daysAgo}d</div>
         </div>
         <div class="trash-amount">−${fmtFull(tx.amount)}</div>
         <div class="trash-actions">
@@ -3605,95 +3431,112 @@ function renderTrash() {
 function restoreTrash(i) {
   const tx = financeData.trash[i];
   if (!tx) return;
-  const {deletedAt, ...clean} = tx;
+  const { deletedAt, ...clean } = tx;
   financeData.transactions.unshift(clean);
   financeData.monthSpend += clean.amount;
   financeData.expenses   += clean.amount;
   financeData.balance     = financeData.income - financeData.expenses;
-  financeData.trash.splice(i,1);
-  saveData(); renderAll(); renderTrash();
+  financeData.trash.splice(i, 1);
+  saveData();
+  renderAll();
+  renderTrash();
   showToast('Transaction restored', 'success');
 }
 
 function permDelete(i) {
   if (!confirm('Permanently delete this transaction?')) return;
-  financeData.trash.splice(i,1);
-  saveData(); renderTrash();
+  financeData.trash.splice(i, 1);
+  saveData();
+  renderTrash();
   showToast('Permanently deleted', 'warn');
 }
 
-document.getElementById('emptyTrashBtn')?.addEventListener('click',()=>{
+document.getElementById('emptyTrashBtn')?.addEventListener('click', () => {
   if (!financeData.trash.length) return;
   if (!confirm('Permanently delete ALL trash items?')) return;
-  financeData.trash=[];
-  saveData(); renderTrash();
+  financeData.trash = [];
+  saveData();
+  renderTrash();
   showToast('Trash emptied', 'warn');
 });
 
-/* Override handleDeleteTx to move to trash instead of permanent delete */
-const _origHandleDeleteTx = handleDeleteTx;
-window.handleDeleteTx = function() {
-  if (editIndex < 0) return;
-  moveToTrash(editIndex);
-  closeModal();
-  showToast('Moved to trash', 'warn');
-};
-
 /* =========================================================
-   SCREEN 7 — DATABASE INFO
+   SCREEN 7 — DATABASE INFO — FIX 3 & FIX 10
    ========================================================= */
 function renderDbInfo() {
-  const json = JSON.stringify(financeData);
-  const kb = (new Blob([json]).size / 1024).toFixed(1);
+  /* FIX 3 & FIX 10: Always compute size live — never read financeData.dbSize */
+  const liveSize = computeDbSize();
   document.getElementById('dbTxCount').textContent     = financeData.transactions.length;
-  document.getElementById('dbInvCount').textContent    = financeData.investments.filter(i=>i.amount>0).length;
+  document.getElementById('dbInvCount').textContent    = financeData.investments.filter(i => i.amount > 0).length;
   document.getElementById('dbRulesCount').textContent  = financeData.rules.length;
   document.getElementById('dbPeopleCount').textContent = financeData.people.length;
   document.getElementById('dbTrashCount').textContent  = financeData.trash.length;
-  document.getElementById('dbSize').textContent        = kb + ' KB';
-  document.getElementById('dbLastBackup').textContent  = financeData.lastBackup||'Never';
-  document.getElementById('dbLastSync').textContent    = financeData.lastEmailSync||'Never';
-  document.getElementById('dbLastSms').textContent     = financeData.lastSmsSync||'Never';
-  const oldest = financeData.transactions.length ? financeData.transactions[financeData.transactions.length-1].date : '—';
-  document.getElementById('dbOldest').textContent      = oldest;
+  document.getElementById('dbSize').textContent        = liveSize;
+  document.getElementById('dbLastBackup').textContent  = financeData.lastBackup   || 'Never';
+  document.getElementById('dbLastSync').textContent    = financeData.lastEmailSync || 'Never';
+  document.getElementById('dbLastSms').textContent     = financeData.lastSmsSync   || 'Never';
+  const oldest = financeData.transactions.length
+    ? financeData.transactions[financeData.transactions.length - 1].date
+    : '—';
+  document.getElementById('dbOldest').textContent = oldest;
 }
 
-document.getElementById('dbExportAll')?.addEventListener('click',()=>{
-  downloadBlob(JSON.stringify(financeData,null,2),'application/json','vihan_full_backup.json');
+document.getElementById('dbExportAll')?.addEventListener('click', () => {
+  downloadBlob(JSON.stringify(financeData, null, 2), 'application/json', 'vihan_full_backup.json');
+  showToast('Full backup exported', 'success');
 });
 
-document.getElementById('dbImportBtn')?.addEventListener('click',()=>{
+document.getElementById('dbImportBtn')?.addEventListener('click', () => {
   document.getElementById('dbImportFile').click();
 });
 
-document.getElementById('dbImportFile')?.addEventListener('change', function(){
+/* FIX 6: Validate all required fields before importing backup */
+document.getElementById('dbImportFile')?.addEventListener('change', function() {
   const file = this.files[0];
   if (!file) return;
   const reader = new FileReader();
   reader.onload = e => {
     try {
       const imported = JSON.parse(e.target.result);
-      if (!imported.transactions) { showToast('Invalid backup file', 'error'); return; return; }
+
+      /* FIX 6: Safety validation — check all required top-level keys */
+      const required = ['transactions', 'investments', 'people', 'rules', 'trash'];
+      const missing  = required.filter(k => !Array.isArray(imported[k]));
+      if (missing.length) {
+        showToast('Invalid backup file — missing: ' + missing.join(', '), 'error');
+        return;
+      }
+
+      /* Additional sanity: transactions must be an array */
+      if (!Array.isArray(imported.transactions)) {
+        showToast('Invalid backup file', 'error');
+        return;
+      }
+
       Object.assign(financeData, imported);
-      saveData(); renderAll(); renderDbInfo();
-      showToast('Backup imported!', 'success');
-    } catch(err) { showToast('Could not parse backup file', 'error'); }
+      saveData();
+      renderAll();
+      renderDbInfo();
+      showToast('Backup imported successfully!', 'success');
+    } catch(err) {
+      showToast('Could not parse backup file — file may be corrupted', 'error');
+    }
   };
   reader.readAsText(file);
-  this.value='';
+  this.value = '';
 });
 
 /* =========================================================
    SCREEN 8 — RULES
    ========================================================= */
 function renderRules() {
-  /* Uncategorized */
-  const uncat = financeData.transactions.filter(tx=>tx.category==='Other'||!tx.category);
-  const badge = document.getElementById('uncatBadge');
+  const uncat  = financeData.transactions.filter(tx => tx.category === 'Other' || !tx.category);
+  const badge  = document.getElementById('uncatBadge');
   if (badge) badge.textContent = uncat.length + ' items';
+
   const uncatList = document.getElementById('uncatList');
   if (uncatList) {
-    uncatList.innerHTML = uncat.length ? uncat.map((tx,i)=>{
+    uncatList.innerHTML = uncat.length ? uncat.map(tx => {
       const realIdx = financeData.transactions.indexOf(tx);
       return `
         <div class="uncateg-row">
@@ -3703,23 +3546,22 @@ function renderRules() {
           </div>
           <select class="form-select" style="width:120px;font-size:12px;" onchange="assignCat(${realIdx},this.value)">
             <option value="">Assign…</option>
-            ${Object.keys(CATEGORY_META).map(c=>`<option value="${c}">${c}</option>`).join('')}
+            ${Object.keys(CATEGORY_META).map(c => `<option value="${c}">${c}</option>`).join('')}
           </select>
         </div>`;
     }).join('') : '<div class="tx-empty">No uncategorized transactions. 🎉</div>';
   }
 
-  /* Rules list */
-  const rList = document.getElementById('rulesList');
+  const rList  = document.getElementById('rulesList');
   const rBadge = document.getElementById('rulesCountBadge');
   if (rBadge) rBadge.textContent = financeData.rules.length;
   if (rList) {
-    rList.innerHTML = financeData.rules.length ? financeData.rules.map((r,i)=>`
+    rList.innerHTML = financeData.rules.length ? financeData.rules.map((r, i) => `
       <div class="rule-row">
         <div class="rule-keyword">${r.keyword}</div>
         <div class="rule-arrow">→</div>
-        <div class="rule-cat" style="color:${CATEGORY_META[r.category]?.color||'var(--muted)'}">
-          ${CATEGORY_META[r.category]?.icon||''} ${r.category}
+        <div class="rule-cat" style="color:${CATEGORY_META[r.category]?.color || 'var(--muted)'}">
+          ${CATEGORY_META[r.category]?.icon || ''} ${r.category}
         </div>
         <button class="btn-del-rule" onclick="deleteRule(${i})">×</button>
       </div>`).join('') : '<div class="tx-empty">No rules saved yet.</div>';
@@ -3729,61 +3571,54 @@ function renderRules() {
 function assignCat(idx, category) {
   if (!category) return;
   financeData.transactions[idx].category = category;
-  /* Auto-learn rule */
   const merchant = financeData.transactions[idx].merchant;
-  if (!financeData.rules.find(r=>r.keyword.toLowerCase()===merchant.toLowerCase())) {
-    financeData.rules.push({keyword:merchant, category});
+  if (!financeData.rules.find(r => r.keyword.toLowerCase() === merchant.toLowerCase())) {
+    financeData.rules.push({ keyword: merchant, category });
   }
-  saveData(); renderAll(); renderRules();
+  saveData();
+  renderAll();
+  renderRules();
 }
 
 function deleteRule(i) {
-  financeData.rules.splice(i,1);
-  saveData(); renderRules();
+  financeData.rules.splice(i, 1);
+  saveData();
+  renderRules();
 }
 
-document.getElementById('addRuleBtn')?.addEventListener('click',()=>{
+document.getElementById('addRuleBtn')?.addEventListener('click', () => {
   const kw  = document.getElementById('ruleKeyword').value.trim();
   const cat = document.getElementById('ruleCat').value;
-  if (!kw) { showToast('Enter a keyword', 'warn'); return; return; }
-  if (financeData.rules.find(r=>r.keyword.toLowerCase()===kw.toLowerCase())) {
-    showToast('Rule already exists for this keyword', 'warn'); return; return;
+  if (!kw) { showToast('Enter a keyword', 'warn'); return; }
+  if (financeData.rules.find(r => r.keyword.toLowerCase() === kw.toLowerCase())) {
+    showToast('Rule already exists for this keyword', 'warn'); return;
   }
-  financeData.rules.push({keyword:kw, category:cat});
-  saveData(); renderRules();
+  financeData.rules.push({ keyword: kw, category: cat });
+  saveData();
+  renderRules();
   showToast('Rule saved: ' + kw + ' → ' + cat, 'success');
-  document.getElementById('ruleKeyword').value='';
-  /* Apply rule to existing transactions */
-  financeData.transactions.forEach(tx=>{
-    if (tx.merchant.toLowerCase().includes(kw.toLowerCase()) && tx.category==='Other') {
+  document.getElementById('ruleKeyword').value = '';
+  financeData.transactions.forEach(tx => {
+    if (tx.merchant.toLowerCase().includes(kw.toLowerCase()) && tx.category === 'Other') {
       tx.category = cat;
     }
   });
-  saveData(); renderAll();
+  saveData();
+  renderAll();
 });
 
-document.getElementById('resetRulesBtn')?.addEventListener('click',()=>{
+document.getElementById('resetRulesBtn')?.addEventListener('click', () => {
   if (!confirm('Delete all saved rules?')) return;
-  financeData.rules=[];
-  saveData(); renderRules();
-});
-
-/* =========================================================
-   BOTTOM NAV (updated — re-register after page-routing added)
-   ========================================================= */
-/* Bottom nav active state is now managed by showPage() */
-document.querySelectorAll('.nav-item').forEach(item => {
-  item.addEventListener('click', e => {
-    e.preventDefault();
-    /* routing is handled by onclick attr — no-op here */
-  });
+  financeData.rules = [];
+  saveData();
+  renderRules();
 });
 
 /* =========================================================
    REAL-TIME CLOCK
    ========================================================= */
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-const pad = n => String(n).padStart(2,'0');
+const pad = n => String(n).padStart(2, '0');
 function tick() {
   const n = new Date();
   document.getElementById('clock').textContent =
@@ -3798,24 +3633,27 @@ setInterval(tick, 1000);
 renderAll();
 
 /* =========================================================
-   TOAST NOTIFICATION SYSTEM
+   TOAST SYSTEM
    ========================================================= */
-function showToast(msg, type='info', ms=3000) {
-  const icons = {info:'ℹ️', success:'✅', error:'❌', warn:'⚠️'};
-  const t = document.createElement('div');
+function showToast(msg, type = 'info', ms = 3000) {
+  const icons = { info:'ℹ️', success:'✅', error:'❌', warn:'⚠️' };
+  const t     = document.createElement('div');
   t.className = `toast toast-${type}`;
-  t.innerHTML = `<span style="font-size:15px">${icons[type]||'ℹ️'}</span><span>${msg}</span>`;
+  t.innerHTML = `<span style="font-size:15px">${icons[type] || 'ℹ️'}</span><span>${msg}</span>`;
   document.getElementById('toastContainer').appendChild(t);
-  requestAnimationFrame(()=>requestAnimationFrame(()=>t.classList.add('show')));
-  setTimeout(()=>{
-    t.classList.remove('show'); t.classList.add('hide');
-    setTimeout(()=>t.remove(), 400);
+  requestAnimationFrame(() => requestAnimationFrame(() => t.classList.add('show')));
+  setTimeout(() => {
+    t.classList.remove('show');
+    t.classList.add('hide');
+    setTimeout(() => t.remove(), 400);
   }, ms);
 }
 
-/* Patch alert() → toast for any remaining alert() calls */
+/* FIX 7: Patch alert() → toast (no fake demo messages will appear) */
 window._origAlert = window.alert;
-window.alert = (msg) => showToast(String(msg), msg.toLowerCase().includes('error')||msg.toLowerCase().includes('invalid')?'error':msg.toLowerCase().includes('success')?'success':'info');
+window.alert = (msg) => showToast(String(msg),
+  msg.toLowerCase().includes('error') || msg.toLowerCase().includes('invalid') ? 'error' :
+  msg.toLowerCase().includes('success') ? 'success' : 'info');
 
 /* =========================================================
    DARK MODE SYSTEM
@@ -3823,68 +3661,47 @@ window.alert = (msg) => showToast(String(msg), msg.toLowerCase().includes('error
 let _theme = localStorage.getItem('vihanTheme') || 'auto';
 
 function _applyTheme(t) {
-  const dark = t==='dark' || (t==='auto' && window.matchMedia('(prefers-color-scheme:dark)').matches);
-  document.documentElement.setAttribute('data-theme', dark?'dark':'light');
+  const dark = t === 'dark' || (t === 'auto' && window.matchMedia('(prefers-color-scheme:dark)').matches);
+  document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
   const btn = document.getElementById('themeToggleBtn');
   if (btn) btn.textContent = dark ? '☀️' : '🌙';
 }
 
-/* Apply on load */
 _applyTheme(_theme);
-window.matchMedia('(prefers-color-scheme:dark)').addEventListener('change', ()=>{ if(_theme==='auto') _applyTheme('auto'); });
-
-document.getElementById('themeToggleBtn').addEventListener('click', ()=>{
-  const isDark = document.documentElement.getAttribute('data-theme')==='dark';
-  const next = isDark ? 'light' : 'dark';
-  _theme = next; localStorage.setItem('vihanTheme', next); _applyTheme(next);
-  const btn = document.getElementById('themeToggleBtn');
-  btn.style.transform='scale(.8) rotate(180deg)';
-  setTimeout(()=>btn.style.transform='', 300);
+window.matchMedia('(prefers-color-scheme:dark)').addEventListener('change', () => {
+  if (_theme === 'auto') _applyTheme('auto');
 });
 
-/* =========================================================
-   PATCH EXPORTS → SHOW TOAST
-   ========================================================= */
-const _origExportCSV = exportCSV;
-exportCSV = function() { _origExportCSV(); showToast('CSV exported', 'success'); };
-
-const _origExportXls = exportExcel;
-exportExcel = function() { _origExportXls(); showToast('Excel exported', 'success'); };
-
-const _origBackup = backupDatabase;
-backupDatabase = function() { _origBackup(); showToast('Backup created!', 'success'); };
+document.getElementById('themeToggleBtn').addEventListener('click', () => {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const next   = isDark ? 'light' : 'dark';
+  _theme = next;
+  localStorage.setItem('vihanTheme', next);
+  _applyTheme(next);
+  const btn = document.getElementById('themeToggleBtn');
+  btn.style.transform = 'scale(.8) rotate(180deg)';
+  setTimeout(() => btn.style.transform = '', 300);
+});
 
 /* =========================================================
    KEYBOARD SHORTCUTS
    ========================================================= */
 document.addEventListener('keydown', e => {
-  if ((e.metaKey||e.ctrlKey) && e.key==='n') { e.preventDefault(); openAddModal(); }
-  if ((e.metaKey||e.ctrlKey) && e.key==='k') { e.preventDefault(); const s=document.getElementById('searchInput'); if(s){s.focus();s.select();} }
+  if ((e.metaKey || e.ctrlKey) && e.key === 'n') { e.preventDefault(); openAddModal(); }
+  if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+    e.preventDefault();
+    const s = document.getElementById('searchInput');
+    if (s) { s.focus(); s.select(); }
+  }
 });
 
 /* =========================================================
-   SYNC SETTINGS → TOAST
+   SYNC ACTIVE THEME BTN ON LOAD
    ========================================================= */
-/* Patch settings sync button */
-document.getElementById('sSyncBtn')?.removeEventListener && void 0; // can't remove anon listeners; re-bind
-
-/* =========================================================
-   DEBOUNCE SEARCH
-   ========================================================= */
-(function patchSearch(){
-  const el = document.getElementById('txSearch');
-  if (!el) return;
-  let _t;
-  el.addEventListener('input', ()=>{clearTimeout(_t); _t=setTimeout(renderTxScreen, 180);}, {capture:true});
-})();
-
-/* =========================================================
-   SYNC SETTINGS ACTIVE THEME BTN
-   ========================================================= */
-(function syncActiveTheme(){
-  const map = {auto:0, light:1, dark:2};
+(function syncActiveTheme() {
+  const map  = { auto: 0, light: 1, dark: 2 };
   const btns = document.querySelectorAll('.theme-btn');
-  btns.forEach(b=>b.classList.remove('active'));
+  btns.forEach(b => b.classList.remove('active'));
   if (btns[map[_theme]]) btns[map[_theme]].classList.add('active');
 })();
 
