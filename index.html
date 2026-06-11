@@ -8,7 +8,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<!-- FIX 9: SheetJS for real Excel export -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -1391,9 +1390,146 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   /* ===== SECTION DIVIDER ===== */
   .section-title { display:flex; align-items:center; gap:10px; }
   .section-title::after { content:''; flex:1; height:1px; background:var(--border); display:inline-block; }
+
+  /* =====================================================
+     NEW CSS — SYNC UPGRADE (inserted after section divider)
+     ===================================================== */
+
+  /* ═══════ PIN LOCK OVERLAY ═══════ */
+  .pin-overlay {
+    position: fixed; inset: 0; z-index: 9000;
+    background: var(--bg);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 28px;
+    animation: fadeUp 0.3s ease both;
+  }
+  .pin-overlay.hidden { display: none; }
+  .pin-logo-wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .pin-title { font-size: 22px; font-weight: 700; color: var(--text); letter-spacing: -0.5px; }
+  .pin-subtitle { font-size: 13px; color: var(--muted); text-align: center; max-width: 240px; }
+  .pin-dots { display: flex; gap: 14px; align-items: center; justify-content: center; }
+  .pin-dot {
+    width: 14px; height: 14px; border-radius: 50%;
+    background: var(--border); border: 2px solid var(--border);
+    transition: background 0.18s, border-color 0.18s, transform 0.18s;
+  }
+  .pin-dot.filled { background: var(--blue); border-color: var(--blue); transform: scale(1.15); }
+  .pin-dot.error  { background: var(--red);  border-color: var(--red);  animation: pin-shake 0.4s ease; }
+  @keyframes pin-shake {
+    0%, 100% { transform: translateX(0); }
+    20%       { transform: translateX(-6px); }
+    40%       { transform: translateX(6px); }
+    60%       { transform: translateX(-4px); }
+    80%       { transform: translateX(4px); }
+  }
+  .pin-keypad { display: grid; grid-template-columns: repeat(3, 64px); gap: 12px; }
+  .pin-key {
+    width: 64px; height: 64px; border-radius: 50%;
+    border: 1.5px solid var(--border); background: var(--card);
+    font-size: 20px; font-weight: 600; font-family: 'DM Mono', monospace;
+    color: var(--text); cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: var(--shadow-sm);
+    transition: background 0.12s, transform 0.1s, box-shadow 0.1s;
+    user-select: none; -webkit-tap-highlight-color: transparent;
+  }
+  .pin-key:hover  { background: var(--blue-light); border-color: var(--blue); }
+  .pin-key:active { transform: scale(0.93); box-shadow: none; }
+  .pin-key.del   { font-size: 16px; }
+  .pin-key.empty { visibility: hidden; pointer-events: none; }
+  .pin-error-msg { font-size: 13px; color: var(--red); font-weight: 500; min-height: 20px; text-align: center; transition: opacity 0.2s; }
+  .pin-footer { font-size: 12px; color: var(--muted); text-align: center; cursor: pointer; text-decoration: underline; margin-top: -10px; }
+
+  /* ═══════ SYNC CENTER ═══════ */
+  .sync-center-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+  @media (max-width: 480px) { .sync-center-grid { grid-template-columns: 1fr; } }
+  .sync-center-stat { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; }
+  .sync-center-label { font-size: 10px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px; }
+  .sync-center-value { font-size: 13px; font-weight: 700; color: var(--text); font-family: 'DM Mono', monospace; }
+  .sync-status-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 20px; }
+  .sync-status-ok    { background: var(--green-light); color: var(--green); }
+  .sync-status-never { background: #F3F4F6; color: var(--muted); }
+  .sync-status-error { background: var(--red-light); color: var(--red); }
+  .sync-history-list { max-height: 180px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+  .sync-history-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; background: var(--bg); border-radius: 8px; border: 1px solid var(--border); font-size: 12px; }
+  .sync-history-icon { font-size: 14px; flex-shrink: 0; }
+  .sync-history-info { flex: 1; min-width: 0; }
+  .sync-history-action { font-weight: 600; color: var(--text); }
+  .sync-history-time   { color: var(--muted); font-family: 'DM Mono', monospace; font-size: 11px; }
+  .email-sync-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+  @media (max-width: 480px) { .email-sync-actions { grid-template-columns: 1fr; } }
+
+  /* ═══════ NOTIFICATION SETTINGS ═══════ */
+  .notif-permission-banner { background: var(--blue-light); border: 1px solid #BFDBFE; border-radius: 10px; padding: 12px 16px; display: flex; align-items: center; gap: 12px; margin-bottom: 14px; font-size: 13px; }
+  .notif-permission-banner.granted { background: var(--green-light); border-color: #A7F3D0; }
+  .notif-permission-banner.denied  { background: var(--red-light);   border-color: #FECACA; }
+  .notif-perm-icon  { font-size: 22px; flex-shrink: 0; }
+  .notif-perm-info  { flex: 1; }
+  .notif-perm-title { font-weight: 600; }
+  .notif-perm-desc  { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .notif-perm-btn   { padding: 6px 14px; border-radius: 8px; border: none; background: var(--blue); color: white; font-size: 12px; font-weight: 600; font-family: 'DM Sans', sans-serif; cursor: pointer; white-space: nowrap; flex-shrink: 0; transition: background 0.15s; }
+  .notif-perm-btn:hover { background: #1D4ED8; }
+
+  /* ═══════ ENCRYPTION BADGE ═══════ */
+  .enc-badge { display: inline-flex; align-items: center; gap: 4px; background: var(--green-light); color: var(--green); border: 1px solid #A7F3D0; border-radius: 20px; padding: 2px 8px; font-size: 11px; font-weight: 600; }
+
+  /* ═══════ PIN SETUP IN SETTINGS ═══════ */
+  .pin-input-row { display: flex; gap: 10px; align-items: center; margin-top: 10px; }
+  .pin-input { width: 140px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 9px 14px; font-size: 18px; font-family: 'DM Mono', monospace; color: var(--text); outline: none; letter-spacing: 6px; transition: border-color 0.2s, box-shadow 0.2s; }
+  .pin-input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+  .pin-setup-btn { padding: 9px 16px; border-radius: 8px; border: none; background: var(--blue); color: white; font-size: 13px; font-weight: 600; font-family: 'DM Sans', sans-serif; cursor: pointer; transition: background 0.15s; }
+  .pin-setup-btn:hover { background: #1D4ED8; }
+  .pin-clear-btn { padding: 9px 16px; border-radius: 8px; border: 1px solid #FECACA; background: var(--red-light); color: var(--red); font-size: 13px; font-weight: 600; font-family: 'DM Sans', sans-serif; cursor: pointer; transition: background 0.15s; }
+
+  /* ═══════ DARK MODE for new elements ═══════ */
+  [data-theme="dark"] .pin-key         { background: #161B22; border-color: #21262D; }
+  [data-theme="dark"] .pin-key:hover   { background: rgba(37,99,235,0.15); }
+  [data-theme="dark"] .sync-center-stat{ background: #0D1117; border-color: #21262D; }
+  [data-theme="dark"] .sync-history-item{ background: #0D1117; border-color: #21262D; }
+  [data-theme="dark"] .notif-permission-banner { background: rgba(37,99,235,0.12); border-color: rgba(37,99,235,0.25); }
+  [data-theme="dark"] .notif-permission-banner.granted { background: rgba(5,150,105,0.12); border-color: rgba(5,150,105,0.25); }
+  [data-theme="dark"] .email-sync-actions .btn-action { background: #0D1117; border-color: #21262D; }
+  [data-theme="dark"] .sync-status-never { background: #21262D; }
 </style>
 </head>
 <body class="ui-enhanced">
+
+<!-- PIN LOCK OVERLAY — shown on app open when PIN is enabled -->
+<div class="pin-overlay hidden" id="pinOverlay" role="dialog" aria-modal="true" aria-label="Enter PIN to unlock">
+  <div class="pin-logo-wrap">
+    <svg width="48" height="48" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M9.5 22.5 C9 21.5 8.5 20 8.5 17.5 L8.5 12.5 C8.5 11.6 9.1 11 10 11 C10.9 11 11.5 11.6 11.5 12.5 L11.5 16" stroke="#2563EB" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+      <path d="M11.5 16 L11.5 10.5 C11.5 9.6 12.1 9 13 9 C13.9 9 14.5 9.6 14.5 10.5 L14.5 14.5" stroke="#2563EB" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+      <path d="M14.5 14.5 L14.5 10 C14.5 9.1 15.1 8.5 16 8.5 C16.9 8.5 17.5 9.1 17.5 10 L17.5 14.5" stroke="#2563EB" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+      <path d="M17.5 14.5 L17.5 11.5 C17.5 10.6 18.1 10 19 10 C19.9 10 20.5 10.6 20.5 11.5 L20.5 19 C20.5 21.5 18.8 24 16 25.5 L14 26.5" stroke="#2563EB" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+    </svg>
+    <div class="pin-title">vihan</div>
+    <div class="pin-subtitle">Enter your 4-digit PIN to unlock</div>
+  </div>
+  <div class="pin-dots" id="pinDots" aria-label="PIN entry progress">
+    <div class="pin-dot" id="pinDot0"></div>
+    <div class="pin-dot" id="pinDot1"></div>
+    <div class="pin-dot" id="pinDot2"></div>
+    <div class="pin-dot" id="pinDot3"></div>
+  </div>
+  <div class="pin-error-msg" id="pinErrorMsg" aria-live="polite"></div>
+  <div class="pin-keypad" role="group" aria-label="PIN keypad">
+    <button class="pin-key" onclick="pinKeyPress('1')">1</button>
+    <button class="pin-key" onclick="pinKeyPress('2')">2</button>
+    <button class="pin-key" onclick="pinKeyPress('3')">3</button>
+    <button class="pin-key" onclick="pinKeyPress('4')">4</button>
+    <button class="pin-key" onclick="pinKeyPress('5')">5</button>
+    <button class="pin-key" onclick="pinKeyPress('6')">6</button>
+    <button class="pin-key" onclick="pinKeyPress('7')">7</button>
+    <button class="pin-key" onclick="pinKeyPress('8')">8</button>
+    <button class="pin-key" onclick="pinKeyPress('9')">9</button>
+    <button class="pin-key empty" aria-hidden="true"></button>
+    <button class="pin-key" onclick="pinKeyPress('0')">0</button>
+    <button class="pin-key del" onclick="pinKeyBackspace()" aria-label="Delete last digit">⌫</button>
+  </div>
+  <div class="pin-footer" onclick="pinForgot()" role="button" tabindex="0">Forgot PIN?</div>
+</div>
 
 <div id="toastContainer" aria-live="polite"></div>
 
@@ -1439,7 +1575,6 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 
   <p class="section-title" id="overviewTitle">Overview</p>
 
-  <!-- Metric Cards Grid -->
   <div class="metrics-grid" role="list" aria-label="Financial overview metrics">
 
     <div class="card card-blue" role="listitem" tabindex="0">
@@ -1503,7 +1638,6 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
         </div>
       </div>
       <div class="card-amount" id="expensesAmt">₹0</div>
-      <!-- FIX 1: expPct badge rendered dynamically, never hardcoded -->
       <div class="card-sub"><span class="badge badge-down" id="expPctBadge">0% of income spent</span></div>
     </div>
 
@@ -1520,7 +1654,6 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 
   </div>
 
-  <!-- Needs Review Banner -->
   <div class="needs-review-card" id="reviewBanner" role="alert" style="display:none;">
     <div class="review-icon" aria-hidden="true">⚠️</div>
     <div>
@@ -1530,9 +1663,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
     <div class="review-badge" id="reviewBadge">0 items</div>
   </div>
 
-  <!-- Panels -->
   <div class="panels">
-
     <div class="panel">
       <div class="panel-title">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
@@ -1560,10 +1691,8 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
         <div class="legend" id="donutLegend" role="list" aria-label="Spending categories"></div>
       </div>
     </div>
-
   </div>
 
-  <!-- Kakeibo Groups Panel -->
   <div class="panel" style="margin-bottom:20px;">
     <div class="panel-title">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
@@ -1572,7 +1701,6 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
     <div class="kakeibo-grid" id="kakeiboGrid"></div>
   </div>
 
-  <!-- Investment Summary Panel -->
   <div class="panel" style="margin-bottom:20px;">
     <div class="panel-title">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
@@ -1598,14 +1726,12 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
     </div>
   </div>
 
-  <!-- System Health Panel -->
   <div class="panel" style="margin-bottom:20px;">
     <div class="panel-title">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
       System Health
     </div>
     <div class="health-grid">
-      <!-- FIX 3: Database size computed live in renderHealth(), never hardcoded -->
       <div class="health-item">
         <div class="health-label">Database Size</div>
         <div class="health-value" id="healthDbSize">—</div>
@@ -1639,8 +1765,6 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
     </div>
   </div>
 
-  <!-- Email Sync Panel -->
-  <!-- FIX 4: All values dynamic — no hardcoded "142 emails", "Working", or timestamps -->
   <div class="sync-panel" role="region" aria-labelledby="sync-title">
     <div class="panel-title" id="sync-title" style="margin-bottom:14px;">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
@@ -1653,12 +1777,10 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
       </div>
       <div>
         <div class="sync-item-label">Status</div>
-        <!-- FIX 4: Status rendered by renderHealth(), not hardcoded -->
         <div id="emailSyncStatus" class="status-never">Not synced</div>
       </div>
       <div>
         <div class="sync-item-label">Emails Synced</div>
-        <!-- FIX 4: Count from financeData.emailSyncCount, not hardcoded "142" -->
         <div class="sync-item-value" id="emailSyncCount">0 emails</div>
       </div>
       <div class="sync-btn-wrap">
@@ -1672,12 +1794,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 
 </main>
 
-<!-- =====================================================
-     SCREEN 1 — TRANSACTIONS
-     ===================================================== -->
+<!-- ===== SCREEN 1 — TRANSACTIONS ===== -->
 <section class="page-screen" id="txPage">
   <p class="section-title">Transactions — All Records</p>
-
   <div class="filter-bar">
     <div class="filter-row">
       <div class="form-group" style="margin:0">
@@ -1717,7 +1836,6 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
       </div>
     </div>
   </div>
-
   <div class="panel" style="margin-bottom:16px;">
     <div class="panel-title">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
@@ -1737,136 +1855,63 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   </div>
 </section>
 
-<!-- =====================================================
-     SCREEN 2 — REPORTS
-     ===================================================== -->
+<!-- ===== SCREEN 2 — REPORTS ===== -->
 <section class="page-screen" id="reportsPage">
   <p class="section-title">Reports — Financial Summary</p>
-
   <div class="report-stat-row">
-    <div class="report-stat">
-      <div class="report-stat-label">Total Income</div>
-      <div class="report-stat-value" id="rIncome" style="color:var(--green)">₹0</div>
-    </div>
-    <div class="report-stat">
-      <div class="report-stat-label">Total Expenses</div>
-      <div class="report-stat-value" id="rExpense" style="color:var(--red)">₹0</div>
-    </div>
-    <div class="report-stat">
-      <div class="report-stat-label">Investments</div>
-      <div class="report-stat-value" id="rInvestment" style="color:var(--blue)">₹0</div>
-    </div>
-    <div class="report-stat">
-      <div class="report-stat-label">Net Balance</div>
-      <div class="report-stat-value" id="rBalance" style="color:var(--text)">₹0</div>
-    </div>
+    <div class="report-stat"><div class="report-stat-label">Total Income</div><div class="report-stat-value" id="rIncome" style="color:var(--green)">₹0</div></div>
+    <div class="report-stat"><div class="report-stat-label">Total Expenses</div><div class="report-stat-value" id="rExpense" style="color:var(--red)">₹0</div></div>
+    <div class="report-stat"><div class="report-stat-label">Investments</div><div class="report-stat-value" id="rInvestment" style="color:var(--blue)">₹0</div></div>
+    <div class="report-stat"><div class="report-stat-label">Net Balance</div><div class="report-stat-value" id="rBalance" style="color:var(--text)">₹0</div></div>
   </div>
-
   <div class="reports-grid">
     <div class="panel">
-      <div class="panel-title">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-        Monthly Spending
-      </div>
-      <div class="bar-chart-wrap">
-        <div class="bar-chart" id="monthlyBarChart"></div>
-      </div>
+      <div class="panel-title"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Monthly Spending</div>
+      <div class="bar-chart-wrap"><div class="bar-chart" id="monthlyBarChart"></div></div>
     </div>
-
     <div class="panel">
-      <div class="panel-title">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 0 20"/></svg>
-        Category Breakdown
-      </div>
+      <div class="panel-title"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 0 20"/></svg>Category Breakdown</div>
       <div class="donut-wrap">
         <div class="donut-center">
-          <svg id="reportDonutSvg" width="140" height="140" viewBox="0 0 168 168">
-            <circle cx="84" cy="84" r="62" fill="none" stroke="#F3F4F6" stroke-width="22"/>
-          </svg>
-          <div class="donut-label">
-            <div class="donut-total" id="reportDonutTotal">₹0</div>
-            <div class="donut-sub-label">total</div>
-          </div>
+          <svg id="reportDonutSvg" width="140" height="140" viewBox="0 0 168 168"><circle cx="84" cy="84" r="62" fill="none" stroke="#F3F4F6" stroke-width="22"/></svg>
+          <div class="donut-label"><div class="donut-total" id="reportDonutTotal">₹0</div><div class="donut-sub-label">total</div></div>
         </div>
         <div class="legend" id="reportDonutLegend"></div>
       </div>
     </div>
   </div>
-
   <div class="panel" style="margin-bottom:16px;">
-    <div class="panel-title">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18"/></svg>
-      Year Summary <span id="yearSummaryHeadingYear"></span>
-    </div>
+    <div class="panel-title"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18"/></svg>Year Summary <span id="yearSummaryHeadingYear"></span></div>
     <div style="overflow-x:auto;">
       <table class="year-table" id="yearSummaryTable">
-        <thead>
-          <tr>
-            <th>Month</th>
-            <th>Income</th>
-            <th>Expenses</th>
-            <th>Investment</th>
-            <th>Savings</th>
-          </tr>
-        </thead>
+        <thead><tr><th>Month</th><th>Income</th><th>Expenses</th><th>Investment</th><th>Savings</th></tr></thead>
         <tbody id="yearTableBody"></tbody>
       </table>
     </div>
     <div class="action-btn-row">
-      <button class="btn-action" id="reportExportCsv">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        Export Report CSV
-      </button>
+      <button class="btn-action" id="reportExportCsv"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Export Report CSV</button>
     </div>
   </div>
 </section>
 
-<!-- =====================================================
-     SCREEN 3 — PEOPLE
-     ===================================================== -->
+<!-- ===== SCREEN 3 — PEOPLE ===== -->
 <section class="page-screen" id="peoplePage">
   <p class="section-title">People — Family Finance</p>
-
   <div class="people-grid" id="peopleGrid"></div>
-
   <div class="panel" style="margin-bottom:16px;">
-    <div class="panel-title">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      Add Person Transaction
+    <div class="panel-title"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add Person Transaction</div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Person</label><select class="form-select" id="pPerson"><option value="Mother">Mother</option><option value="Father">Father</option><option value="Wife">Wife</option><option value="Sister">Sister</option></select></div>
+      <div class="form-group"><label class="form-label">Amount (₹)</label><input type="number" class="form-input" id="pAmount" placeholder="e.g. 500"></div>
     </div>
     <div class="form-row">
-      <div class="form-group">
-        <label class="form-label">Person</label>
-        <select class="form-select" id="pPerson">
-          <option value="Mother">Mother</option>
-          <option value="Father">Father</option>
-          <option value="Wife">Wife</option>
-          <option value="Sister">Sister</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Amount (₹)</label>
-        <input type="number" class="form-input" id="pAmount" placeholder="e.g. 500">
-      </div>
-    </div>
-    <div class="form-row">
-      <div class="form-group">
-        <label class="form-label">Type</label>
-        <select class="form-select" id="pType">
-          <option value="given">Given (I paid them)</option>
-          <option value="received">Received (They paid me)</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Note</label>
-        <input type="text" class="form-input" id="pNote" placeholder="e.g. Medicine">
-      </div>
+      <div class="form-group"><label class="form-label">Type</label><select class="form-select" id="pType"><option value="given">Given (I paid them)</option><option value="received">Received (They paid me)</option></select></div>
+      <div class="form-group"><label class="form-label">Note</label><input type="text" class="form-input" id="pNote" placeholder="e.g. Medicine"></div>
     </div>
     <button class="btn-update" id="addPersonTxBtn" style="margin-top:8px;">Add Transaction</button>
   </div>
 </section>
 
-<!-- Person Detail Modal -->
 <div class="person-modal-overlay" id="personModal">
   <div class="modal">
     <div class="modal-header">
@@ -1877,23 +1922,15 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   </div>
 </div>
 
-<!-- =====================================================
-     SCREEN 4 — SETTINGS
-     ===================================================== -->
+<!-- ===== SCREEN 4 — SETTINGS ===== -->
 <section class="page-screen" id="settingsPage">
   <p class="section-title">Settings</p>
 
   <div class="settings-section">
     <div class="panel">
-      <div class="panel-title">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
-        Backup & Export
-      </div>
+      <div class="panel-title"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>Backup &amp; Export</div>
       <div class="action-btn-row" style="margin-top:0;padding-top:0;border-top:none;">
-        <button class="btn-action btn-action-backup" id="sBackupBtn">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Backup Now (JSON)
-        </button>
+        <button class="btn-action btn-action-backup" id="sBackupBtn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Backup Now (JSON)</button>
         <button class="btn-action" id="sExportCsv">Export CSV</button>
         <button class="btn-action" id="sExportXls">Export Excel</button>
       </div>
@@ -1902,66 +1939,128 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 
   <div class="settings-section">
     <div class="panel">
-      <div class="panel-title">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-        Security
+      <div class="panel-title"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Security</div>
+      <div class="setting-row">
+        <div class="setting-info"><div class="setting-name">PIN Lock</div><div class="setting-desc">Require PIN to open the app</div></div>
+        <!-- NOTE: pinToggle kept for backward compat; new pinToggleNew (below) is the active one -->
+        <div class="toggle-wrap" id="pinToggle" onclick="toggleSetting(this)"><div class="toggle-knob"></div></div>
       </div>
       <div class="setting-row">
-        <div class="setting-info">
-          <div class="setting-name">PIN Lock</div>
-          <div class="setting-desc">Require PIN to open the app</div>
-        </div>
-        <div class="toggle-wrap" id="pinToggle" onclick="toggleSetting(this)">
-          <div class="toggle-knob"></div>
-        </div>
-      </div>
-      <div class="setting-row">
-        <div class="setting-info">
-          <div class="setting-name">Biometric / Fingerprint</div>
-          <div class="setting-desc">Use fingerprint to unlock</div>
-        </div>
-        <div class="toggle-wrap" id="bioToggle" onclick="toggleSetting(this)">
-          <div class="toggle-knob"></div>
-        </div>
+        <div class="setting-info"><div class="setting-name">Biometric / Fingerprint</div><div class="setting-desc">Use fingerprint to unlock</div></div>
+        <div class="toggle-wrap" id="bioToggle" onclick="toggleSetting(this)"><div class="toggle-knob"></div></div>
       </div>
     </div>
   </div>
 
   <div class="settings-section">
     <div class="panel">
-      <div class="panel-title">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-        Email Sync
-      </div>
+      <div class="panel-title"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>Email Sync</div>
       <div class="form-row" style="margin-bottom:12px;">
-        <div class="form-group">
-          <label class="form-label">Sync Email Address</label>
-          <input type="email" class="form-input" id="sSyncEmail" value="">
-        </div>
-        <div class="form-group" style="display:flex;align-items:flex-end;">
-          <button class="btn-update" id="sSyncBtn" style="width:100%;">Sync Now</button>
-        </div>
+        <div class="form-group"><label class="form-label">Sync Email Address</label><input type="email" class="form-input" id="sSyncEmail" value=""></div>
+        <div class="form-group" style="display:flex;align-items:flex-end;"><button class="btn-update" id="sSyncBtn" style="width:100%;">Sync Now</button></div>
       </div>
       <div class="health-grid">
-        <div class="health-item">
-          <div class="health-label">Last Sync</div>
-          <div class="health-value" id="sLastSync">—</div>
-        </div>
-        <div class="health-item">
-          <div class="health-label">Emails Synced</div>
-          <!-- FIX 4: Dynamic count, not hardcoded -->
-          <div class="health-value" id="sEmailCount">0 emails</div>
-        </div>
+        <div class="health-item"><div class="health-label">Last Sync</div><div class="health-value" id="sLastSync">—</div></div>
+        <div class="health-item"><div class="health-label">Emails Synced</div><div class="health-value" id="sEmailCount">0 emails</div></div>
       </div>
+    </div>
+  </div>
+
+  <!-- ===== NEW: SYNC CENTER PANEL ===== -->
+  <div class="settings-section" id="syncCenterSection">
+    <div class="panel">
+      <div class="panel-title">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        Sync Center
+      </div>
+      <div class="sync-center-grid">
+        <div class="sync-center-stat"><div class="sync-center-label">Email Connected</div><div class="sync-center-value" id="scEmail">Not set</div></div>
+        <div class="sync-center-stat"><div class="sync-center-label">Last Sync</div><div class="sync-center-value" id="scLastSync">Never</div></div>
+        <div class="sync-center-stat"><div class="sync-center-label">Device Name</div><div class="sync-center-value" id="scDevice">—</div></div>
+        <div class="sync-center-stat"><div class="sync-center-label">Sync Status</div><div id="scStatus"><span class="sync-status-badge sync-status-never">Never synced</span></div></div>
+        <div class="sync-center-stat"><div class="sync-center-label">Backup Size</div><div class="sync-center-value" id="scSize">—</div></div>
+        <div class="sync-center-stat"><div class="sync-center-label">Syncs Performed</div><div class="sync-center-value" id="scSyncCount">0</div></div>
+      </div>
+      <div class="form-group" style="margin-bottom:12px;"><label class="form-label">Your Gmail Address</label><input type="email" class="form-input" id="scEmailInput" placeholder="you@gmail.com"></div>
+      <div class="form-group" style="margin-bottom:14px;"><label class="form-label">Device Name (optional)</label><input type="text" class="form-input" id="scDeviceInput" placeholder="e.g. My iPhone, Work Laptop"></div>
+      <div class="email-sync-actions">
+        <button class="btn-action btn-action-backup" id="scSendEmailBtn">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          Send Backup to Email <span class="enc-badge" style="margin-left:4px;">🔒 AES</span>
+        </button>
+        <button class="btn-action" id="scImportEmailBtn">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Import from Email Backup
+        </button>
+      </div>
+      <input type="file" id="scImportFile" accept=".vihanbackup,.json" style="display:none;">
+      <div class="action-btn-row" style="margin-top:10px;padding-top:10px;">
+        <button class="btn-action" id="scForceUploadBtn">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Force Upload (Download File)
+        </button>
+        <button class="btn-action" id="scForceDownloadBtn">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Force Download (Import File)
+        </button>
+        <input type="file" id="scForceImportFile" accept=".vihanbackup,.json" style="display:none;">
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== NEW: SYNC HISTORY PANEL ===== -->
+  <div class="settings-section">
+    <div class="panel">
+      <div class="panel-title"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Sync History</div>
+      <div class="sync-history-list" id="syncHistoryList"><div class="tx-empty">No sync history yet.</div></div>
+      <div class="action-btn-row"><button class="btn-action" id="clearSyncHistoryBtn" style="color:var(--muted);">Clear History</button></div>
+    </div>
+  </div>
+
+  <!-- ===== NEW: PIN LOCK SETTINGS PANEL ===== -->
+  <div class="settings-section">
+    <div class="panel">
+      <div class="panel-title">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        PIN Lock
+        <span id="pinStatusBadge" style="margin-left:auto;font-size:11px;background:#F3F4F6;color:var(--muted);padding:2px 8px;border-radius:20px;font-family:'DM Mono',monospace;">Not set</span>
+      </div>
+      <div class="setting-row">
+        <div class="setting-info"><div class="setting-name">Enable PIN Lock</div><div class="setting-desc">Require a 4-digit PIN every time you open the app</div></div>
+        <div class="toggle-wrap" id="pinToggleNew" onclick="togglePinLock(this)"><div class="toggle-knob"></div></div>
+      </div>
+      <div id="pinSetupForm" style="display:none;padding-top:12px;border-top:1px solid var(--border);margin-top:4px;">
+        <div class="form-label">Set / Change PIN</div>
+        <div class="pin-input-row">
+          <input type="password" inputmode="numeric" maxlength="4" class="pin-input" id="pinSetupInput" placeholder="••••" autocomplete="new-password">
+          <button class="pin-setup-btn" id="savePinBtn">Save PIN</button>
+          <button class="pin-clear-btn" id="clearPinBtn">Clear</button>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:6px;">Use exactly 4 digits. Encrypted backup will use this PIN as the passphrase.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== NEW: PUSH NOTIFICATIONS PANEL ===== -->
+  <div class="settings-section">
+    <div class="panel">
+      <div class="panel-title"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>Push Notifications</div>
+      <div class="notif-permission-banner" id="notifPermBanner">
+        <div class="notif-perm-icon">🔔</div>
+        <div class="notif-perm-info"><div class="notif-perm-title" id="notifPermTitle">Notifications not enabled</div><div class="notif-perm-desc" id="notifPermDesc">Grant permission to receive budget alerts and reminders</div></div>
+        <button class="notif-perm-btn" id="notifPermBtn" onclick="requestNotifPermission()">Enable</button>
+      </div>
+      <div class="setting-row"><div class="setting-info"><div class="setting-name">Daily Expense Reminder</div><div class="setting-desc">Remind me to log expenses at 9 PM</div></div><div class="toggle-wrap" id="notifDailyToggle" onclick="toggleNotifSetting('daily', this)"><div class="toggle-knob"></div></div></div>
+      <div class="setting-row"><div class="setting-info"><div class="setting-name">Monthly Budget Alert</div><div class="setting-desc">Alert when spending exceeds 80% of income</div></div><div class="toggle-wrap" id="notifBudgetToggle" onclick="toggleNotifSetting('budget', this)"><div class="toggle-knob"></div></div></div>
+      <div class="setting-row"><div class="setting-info"><div class="setting-name">Low Balance Alert</div><div class="setting-desc">Alert when balance drops below ₹5,000</div></div><div class="toggle-wrap" id="notifBalanceToggle" onclick="toggleNotifSetting('balance', this)"><div class="toggle-knob"></div></div></div>
+      <div class="setting-row"><div class="setting-info"><div class="setting-name">SIP Investment Reminder</div><div class="setting-desc">Remind on 1st of every month</div></div><div class="toggle-wrap" id="notifSipToggle" onclick="toggleNotifSetting('sip', this)"><div class="toggle-knob"></div></div></div>
+      <div class="setting-row" style="border-bottom:none;"><div class="setting-info"><div class="setting-name">Bill Due Reminder</div><div class="setting-desc">Remind 3 days before bills category spending stalls</div></div><div class="toggle-wrap" id="notifBillToggle" onclick="toggleNotifSetting('bill', this)"><div class="toggle-knob"></div></div></div>
     </div>
   </div>
 
   <div class="settings-section">
     <div class="panel">
-      <div class="panel-title">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-        Theme
-      </div>
+      <div class="panel-title"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>Theme</div>
       <div class="theme-btns">
         <button class="theme-btn active" onclick="setTheme('auto',this)">🌓 Auto</button>
         <button class="theme-btn" onclick="setTheme('light',this)">☀️ Light</button>
@@ -1971,243 +2070,98 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   </div>
 </section>
 
-<!-- =====================================================
-     SCREEN 5 — INVESTMENTS FULL
-     ===================================================== -->
+<!-- ===== SCREEN 5 — INVESTMENTS ===== -->
 <section class="page-screen" id="invPage">
   <p class="section-title">Investments — Full Manager</p>
-
   <div class="inv-type-grid">
-    <div class="inv-type-card">
-      <div class="inv-type-icon">📈</div>
-      <div class="inv-type-name">SIP</div>
-      <div class="inv-type-total" id="invSipTotal" style="color:var(--blue)">₹0</div>
-    </div>
-    <div class="inv-type-card">
-      <div class="inv-type-icon">🛡️</div>
-      <div class="inv-type-name">Insurance</div>
-      <div class="inv-type-total" id="invInsTotal" style="color:var(--green)">₹0</div>
-    </div>
-    <div class="inv-type-card">
-      <div class="inv-type-icon">🥇</div>
-      <div class="inv-type-name">Gold</div>
-      <div class="inv-type-total" id="invGoldTotal" style="color:var(--amber)">₹0</div>
-    </div>
-    <div class="inv-type-card">
-      <div class="inv-type-icon">🏦</div>
-      <div class="inv-type-name">RD / FD</div>
-      <div class="inv-type-total" id="invRdTotal" style="color:var(--purple)">₹0</div>
-    </div>
+    <div class="inv-type-card"><div class="inv-type-icon">📈</div><div class="inv-type-name">SIP</div><div class="inv-type-total" id="invSipTotal" style="color:var(--blue)">₹0</div></div>
+    <div class="inv-type-card"><div class="inv-type-icon">🛡️</div><div class="inv-type-name">Insurance</div><div class="inv-type-total" id="invInsTotal" style="color:var(--green)">₹0</div></div>
+    <div class="inv-type-card"><div class="inv-type-icon">🥇</div><div class="inv-type-name">Gold</div><div class="inv-type-total" id="invGoldTotal" style="color:var(--amber)">₹0</div></div>
+    <div class="inv-type-card"><div class="inv-type-icon">🏦</div><div class="inv-type-name">RD / FD</div><div class="inv-type-total" id="invRdTotal" style="color:var(--purple)">₹0</div></div>
   </div>
-
   <div class="panels">
     <div class="panel">
-      <div class="panel-title">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
-        Investment Records
-      </div>
+      <div class="panel-title"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>Investment Records</div>
       <div id="invList"></div>
-      <div class="action-btn-row">
-        <button class="btn-action" id="invExportCsv">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Export CSV
-        </button>
-      </div>
+      <div class="action-btn-row"><button class="btn-action" id="invExportCsv"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Export CSV</button></div>
     </div>
     <div class="panel">
-      <div class="panel-title">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        Add Investment
+      <div class="panel-title"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add Investment</div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Type</label><select class="form-select" id="invType"><option value="SIP">SIP</option><option value="Insurance">Insurance</option><option value="Gold">Gold</option><option value="RD">RD / FD</option><option value="Other">Other</option></select></div>
+        <div class="form-group"><label class="form-label">Amount (₹)</label><input type="number" class="form-input" id="invAmount" placeholder="e.g. 5000"></div>
       </div>
       <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Type</label>
-          <select class="form-select" id="invType">
-            <option value="SIP">SIP</option>
-            <option value="Insurance">Insurance</option>
-            <option value="Gold">Gold</option>
-            <option value="RD">RD / FD</option>
-            <option value="Other">Other</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Amount (₹)</label>
-          <input type="number" class="form-input" id="invAmount" placeholder="e.g. 5000">
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Frequency</label>
-          <select class="form-select" id="invFreq">
-            <option value="Monthly">Monthly</option>
-            <option value="Quarterly">Quarterly</option>
-            <option value="Yearly">Yearly</option>
-            <option value="One-time">One-time</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Date</label>
-          <input type="date" class="form-input" id="invDate">
-        </div>
+        <div class="form-group"><label class="form-label">Frequency</label><select class="form-select" id="invFreq"><option value="Monthly">Monthly</option><option value="Quarterly">Quarterly</option><option value="Yearly">Yearly</option><option value="One-time">One-time</option></select></div>
+        <div class="form-group"><label class="form-label">Date</label><input type="date" class="form-input" id="invDate"></div>
       </div>
       <button class="btn-update" id="addInvBtn" style="margin-top:8px;">Add Investment</button>
     </div>
   </div>
 </section>
 
-<!-- =====================================================
-     SCREEN 6 — TRASH
-     ===================================================== -->
+<!-- ===== SCREEN 6 — TRASH ===== -->
 <section class="page-screen" id="trashPage">
   <p class="section-title">Trash — Deleted Transactions</p>
-
   <div class="panel" style="margin-bottom:16px;">
-    <div class="panel-title">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-      Deleted Items (auto-purged after 30 days)
-      <span id="trashCountBadge" style="margin-left:auto;font-size:11px;font-weight:600;background:#FEF2F2;color:var(--red);padding:2px 8px;border-radius:20px;font-family:'DM Mono',monospace"></span>
-    </div>
+    <div class="panel-title"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>Deleted Items (auto-purged after 30 days)<span id="trashCountBadge" style="margin-left:auto;font-size:11px;font-weight:600;background:#FEF2F2;color:var(--red);padding:2px 8px;border-radius:20px;font-family:'DM Mono',monospace"></span></div>
     <div id="trashList"></div>
-    <div class="action-btn-row">
-      <button class="btn-action" id="emptyTrashBtn" style="color:var(--red);border-color:#FECACA;background:var(--red-light);">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
-        Empty Trash
-      </button>
-    </div>
+    <div class="action-btn-row"><button class="btn-action" id="emptyTrashBtn" style="color:var(--red);border-color:#FECACA;background:var(--red-light);"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>Empty Trash</button></div>
   </div>
 </section>
 
-<!-- =====================================================
-     SCREEN 7 — DATABASE INFO
-     ===================================================== -->
+<!-- ===== SCREEN 7 — DATABASE INFO ===== -->
 <section class="page-screen" id="dbPage">
   <p class="section-title">Database — System Info</p>
-
   <div class="db-stat-grid">
-    <div class="db-stat">
-      <div class="db-stat-num" id="dbTxCount" style="color:var(--blue)">0</div>
-      <div class="db-stat-lbl">Transactions</div>
-    </div>
-    <div class="db-stat">
-      <div class="db-stat-num" id="dbInvCount" style="color:var(--green)">0</div>
-      <div class="db-stat-lbl">Investments</div>
-    </div>
-    <div class="db-stat">
-      <div class="db-stat-num" id="dbRulesCount" style="color:var(--amber)">0</div>
-      <div class="db-stat-lbl">Rules Saved</div>
-    </div>
-    <div class="db-stat">
-      <div class="db-stat-num" id="dbPeopleCount" style="color:var(--purple)">0</div>
-      <div class="db-stat-lbl">People</div>
-    </div>
-    <div class="db-stat">
-      <div class="db-stat-num" id="dbTrashCount" style="color:var(--red)">0</div>
-      <div class="db-stat-lbl">In Trash</div>
-    </div>
-    <!-- FIX 3: DB size computed live in renderDbInfo() -->
-    <div class="db-stat">
-      <div class="db-stat-num" id="dbSize" style="color:var(--muted)">0 KB</div>
-      <div class="db-stat-lbl">DB Size</div>
-    </div>
+    <div class="db-stat"><div class="db-stat-num" id="dbTxCount" style="color:var(--blue)">0</div><div class="db-stat-lbl">Transactions</div></div>
+    <div class="db-stat"><div class="db-stat-num" id="dbInvCount" style="color:var(--green)">0</div><div class="db-stat-lbl">Investments</div></div>
+    <div class="db-stat"><div class="db-stat-num" id="dbRulesCount" style="color:var(--amber)">0</div><div class="db-stat-lbl">Rules Saved</div></div>
+    <div class="db-stat"><div class="db-stat-num" id="dbPeopleCount" style="color:var(--purple)">0</div><div class="db-stat-lbl">People</div></div>
+    <div class="db-stat"><div class="db-stat-num" id="dbTrashCount" style="color:var(--red)">0</div><div class="db-stat-lbl">In Trash</div></div>
+    <div class="db-stat"><div class="db-stat-num" id="dbSize" style="color:var(--muted)">0 KB</div><div class="db-stat-lbl">DB Size</div></div>
   </div>
-
   <div class="panel" style="margin-bottom:16px;">
-    <div class="panel-title">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-      System Timestamps
-    </div>
+    <div class="panel-title"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>System Timestamps</div>
     <div class="health-grid">
-      <div class="health-item">
-        <div class="health-label">Last Backup</div>
-        <div class="health-value" id="dbLastBackup">Never</div>
-      </div>
-      <div class="health-item">
-        <div class="health-label">Last Sync</div>
-        <div class="health-value" id="dbLastSync">Never</div>
-      </div>
-      <div class="health-item">
-        <div class="health-label">Last SMS Sync</div>
-        <div class="health-value" id="dbLastSms">Never</div>
-      </div>
-      <div class="health-item">
-        <div class="health-label">Oldest Transaction</div>
-        <div class="health-value" id="dbOldest">—</div>
-      </div>
+      <div class="health-item"><div class="health-label">Last Backup</div><div class="health-value" id="dbLastBackup">Never</div></div>
+      <div class="health-item"><div class="health-label">Last Sync</div><div class="health-value" id="dbLastSync">Never</div></div>
+      <div class="health-item"><div class="health-label">Last SMS Sync</div><div class="health-value" id="dbLastSms">Never</div></div>
+      <div class="health-item"><div class="health-label">Oldest Transaction</div><div class="health-value" id="dbOldest">—</div></div>
     </div>
     <div class="action-btn-row">
-      <button class="btn-action btn-action-backup" id="dbExportAll">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        Export Full DB (JSON)
-      </button>
+      <button class="btn-action btn-action-backup" id="dbExportAll"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Export Full DB (JSON)</button>
       <button class="btn-action" id="dbImportBtn">Import Backup JSON</button>
       <input type="file" id="dbImportFile" accept=".json" style="display:none;">
     </div>
   </div>
 </section>
 
-<!-- =====================================================
-     SCREEN 8 — RULE LEARNING
-     ===================================================== -->
+<!-- ===== SCREEN 8 — RULE LEARNING ===== -->
 <section class="page-screen" id="rulesPage">
   <p class="section-title">Smart Rules — Auto-Category Learning</p>
-
   <div class="panel" style="margin-bottom:16px;">
-    <div class="panel-title">
-      <span style="font-size:16px;">⚠️</span>
-      Uncategorized Transactions
-      <span id="uncatBadge" style="margin-left:auto;font-size:11px;font-weight:600;background:#FFFBEB;color:var(--amber);padding:2px 8px;border-radius:20px;font-family:'DM Mono',monospace"></span>
-    </div>
+    <div class="panel-title"><span style="font-size:16px;">⚠️</span>Uncategorized Transactions<span id="uncatBadge" style="margin-left:auto;font-size:11px;font-weight:600;background:#FFFBEB;color:var(--amber);padding:2px 8px;border-radius:20px;font-family:'DM Mono',monospace"></span></div>
     <div id="uncatList"></div>
   </div>
-
   <div class="panel" style="margin-bottom:16px;">
-    <div class="panel-title">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      Add Rule (Keyword → Category)
-    </div>
+    <div class="panel-title"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add Rule (Keyword → Category)</div>
     <div class="form-row">
-      <div class="form-group">
-        <label class="form-label">Keyword</label>
-        <input type="text" class="form-input" id="ruleKeyword" placeholder="e.g. Amazon">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Category</label>
-        <select class="form-select" id="ruleCat">
-          <option value="Food">Food</option>
-          <option value="Shopping">Shopping</option>
-          <option value="Groceries">Groceries</option>
-          <option value="Fuel">Fuel</option>
-          <option value="Bills">Bills</option>
-          <option value="Investment">Investment</option>
-          <option value="Insurance">Insurance</option>
-          <option value="Family">Family</option>
-          <option value="Other">Other</option>
-        </select>
-      </div>
+      <div class="form-group"><label class="form-label">Keyword</label><input type="text" class="form-input" id="ruleKeyword" placeholder="e.g. Amazon"></div>
+      <div class="form-group"><label class="form-label">Category</label><select class="form-select" id="ruleCat"><option value="Food">Food</option><option value="Shopping">Shopping</option><option value="Groceries">Groceries</option><option value="Fuel">Fuel</option><option value="Bills">Bills</option><option value="Investment">Investment</option><option value="Insurance">Insurance</option><option value="Family">Family</option><option value="Other">Other</option></select></div>
     </div>
     <button class="btn-update" id="addRuleBtn" style="margin-top:8px;">Save Rule</button>
   </div>
-
   <div class="panel">
-    <div class="panel-title">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-      Saved Rules <span id="rulesCountBadge" style="margin-left:auto;font-size:11px;font-weight:600;background:#EFF6FF;color:var(--blue);padding:2px 8px;border-radius:20px;font-family:'DM Mono',monospace"></span>
-    </div>
+    <div class="panel-title"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Saved Rules <span id="rulesCountBadge" style="margin-left:auto;font-size:11px;font-weight:600;background:#EFF6FF;color:var(--blue);padding:2px 8px;border-radius:20px;font-family:'DM Mono',monospace"></span></div>
     <div id="rulesList"></div>
-    <div class="action-btn-row">
-      <button class="btn-action" id="resetRulesBtn" style="color:var(--red);border-color:#FECACA;background:var(--red-light);">
-        Reset All Rules
-      </button>
-    </div>
+    <div class="action-btn-row"><button class="btn-action" id="resetRulesBtn" style="color:var(--red);border-color:#FECACA;background:var(--red-light);">Reset All Rules</button></div>
   </div>
 </section>
 
 <!-- FAB -->
 <button class="fab" id="fabBtn" aria-label="Add new transaction" title="Add new entry">
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
-    <line x1="12" y1="5" x2="12" y2="19"/>
-    <line x1="5" y1="12" x2="19" y2="12"/>
-  </svg>
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
 </button>
 
 <!-- Add Transaction Modal -->
@@ -2218,54 +2172,16 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
       <button class="modal-close" id="modalClose" aria-label="Close modal">×</button>
     </div>
     <div class="form-row">
-      <div class="form-group">
-        <label class="form-label" for="fAmount">Amount (₹)</label>
-        <input type="number" class="form-input" id="fAmount" placeholder="e.g. 450" min="0">
-      </div>
-      <div class="form-group">
-        <label class="form-label" for="fMerchant">Merchant</label>
-        <input type="text" class="form-input" id="fMerchant" placeholder="e.g. Swiggy">
-      </div>
+      <div class="form-group"><label class="form-label" for="fAmount">Amount (₹)</label><input type="number" class="form-input" id="fAmount" placeholder="e.g. 450" min="0"></div>
+      <div class="form-group"><label class="form-label" for="fMerchant">Merchant</label><input type="text" class="form-input" id="fMerchant" placeholder="e.g. Swiggy"></div>
     </div>
     <div class="form-row">
-      <div class="form-group">
-        <label class="form-label" for="fCategory">Category</label>
-        <select class="form-select" id="fCategory">
-          <option value="Food">Food</option>
-          <option value="Shopping">Shopping</option>
-          <option value="Groceries">Groceries</option>
-          <option value="Fuel">Fuel</option>
-          <option value="Bills">Bills</option>
-          <option value="Investment">Investment</option>
-          <option value="Insurance">Insurance</option>
-          <option value="Family">Family</option>
-          <option value="Other">Other</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="form-label" for="fAccount">Account</label>
-        <select class="form-select" id="fAccount">
-          <option value="HDFC">HDFC Bank</option>
-          <option value="SBI">SBI</option>
-          <option value="Credit">Credit Card</option>
-          <option value="UPI">UPI</option>
-          <option value="Cash">Cash</option>
-        </select>
-      </div>
+      <div class="form-group"><label class="form-label" for="fCategory">Category</label><select class="form-select" id="fCategory"><option value="Food">Food</option><option value="Shopping">Shopping</option><option value="Groceries">Groceries</option><option value="Fuel">Fuel</option><option value="Bills">Bills</option><option value="Investment">Investment</option><option value="Insurance">Insurance</option><option value="Family">Family</option><option value="Other">Other</option></select></div>
+      <div class="form-group"><label class="form-label" for="fAccount">Account</label><select class="form-select" id="fAccount"><option value="HDFC">HDFC Bank</option><option value="SBI">SBI</option><option value="Credit">Credit Card</option><option value="UPI">UPI</option><option value="Cash">Cash</option></select></div>
     </div>
     <div class="form-row">
-      <div class="form-group">
-        <label class="form-label" for="fDate">Date</label>
-        <input type="date" class="form-input" id="fDate">
-      </div>
-      <div class="form-group">
-        <label class="form-label" for="fSource">Source</label>
-        <select class="form-select" id="fSource">
-          <option value="Manual">Manual ✍</option>
-          <option value="SMS">SMS 📩</option>
-          <option value="Email">Email 📧</option>
-        </select>
-      </div>
+      <div class="form-group"><label class="form-label" for="fDate">Date</label><input type="date" class="form-input" id="fDate"></div>
+      <div class="form-group"><label class="form-label" for="fSource">Source</label><select class="form-select" id="fSource"><option value="Manual">Manual ✍</option><option value="SMS">SMS 📩</option><option value="Email">Email 📧</option></select></div>
     </div>
     <div id="modalActionRow" class="modal-action-row">
       <button class="btn-update" id="addTxBtn">Add Transaction</button>
@@ -2276,1452 +2192,10 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 <!-- Bottom Navigation -->
 <nav class="bottom-nav" aria-label="Primary navigation">
   <div class="nav-items" role="list">
-    <a class="nav-item active" href="#" role="listitem" aria-current="page" aria-label="Dashboard" onclick="showPage('dashboard');return false;">
-      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
-      <span class="nav-label">Dashboard</span>
-    </a>
-    <a class="nav-item" href="#" role="listitem" aria-label="Transactions" onclick="showPage('transactions');return false;">
-      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-      <span class="nav-label">Transactions</span>
-    </a>
-    <a class="nav-item" href="#" role="listitem" aria-label="People" onclick="showPage('people');return false;">
-      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-      <span class="nav-label">People</span>
-    </a>
-    <a class="nav-item" href="#" role="listitem" aria-label="Reports" onclick="showPage('reports');return false;">
-      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-      <span class="nav-label">Reports</span>
-    </a>
-    <a class="nav-item" href="#" role="listitem" aria-label="Settings" onclick="showPage('settings');return false;">
-      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-      <span class="nav-label">Settings</span>
-    </a>
+    <a class="nav-item active" href="#" role="listitem" aria-current="page" aria-label="Dashboard" onclick="showPage('dashboard');return false;"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg><span class="nav-label">Dashboard</span></a>
+    <a class="nav-item" href="#" role="listitem" aria-label="Transactions" onclick="showPage('transactions');return false;"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg><span class="nav-label">Transactions</span></a>
+    <a class="nav-item" href="#" role="listitem" aria-label="People" onclick="showPage('people');return false;"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span class="nav-label">People</span></a>
+    <a class="nav-item" href="#" role="listitem" aria-label="Reports" onclick="showPage('reports');return false;"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg><span class="nav-label">Reports</span></a>
+    <a class="nav-item" href="#" role="listitem" aria-label="Settings" onclick="showPage('settings');return false;"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span class="nav-label">Settings</span></a>
   </div>
 </nav>
-
-<script>
-/* =========================================================
-   CENTRAL DATA ENGINE
-   ========================================================= */
-const _NOW = new Date();
-const _CUR_MONTH_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][_NOW.getMonth()];
-const _CUR_MONTH_LONG  = ['January','February','March','April','May','June','July','August','September','October','November','December'][_NOW.getMonth()];
-const _CUR_YEAR        = _NOW.getFullYear();
-
-/* FIX 7: DEFAULT_DATA has all-zero values — no demo text, no fake numbers */
-const DEFAULT_DATA = {
-  todaySpend:     0,
-  monthSpend:     0,
-  creditUsed:     0,
-  creditLimit:    0,
-  income:         0,
-  expenses:       0,
-  balance:        0,
-  reviewItems:    0,
-  lastEmailSync:  '',
-  lastSmsSync:    '',
-  lastBackup:     '',
-  emailSyncCount: 0,   /* FIX 4: track actual synced email count */
-  investments:    [],
-  transactions:   [],
-  people:         [],
-  trash:          [],
-  rules:          []
-};
-
-function loadData() {
-  try {
-    const saved = localStorage.getItem('vihanFinanceData');
-    if (saved) {
-      const d = JSON.parse(saved);
-      if (!d.investments)   d.investments   = [];
-      if (!d.people)        d.people        = [];
-      if (!d.trash)         d.trash         = [];
-      if (!d.rules)         d.rules         = [];
-      if (d.creditLimit    === undefined) d.creditLimit    = 0;
-      if (d.creditUsed     === undefined) d.creditUsed     = 0;
-      if (d.reviewItems    === undefined) d.reviewItems    = 0;
-      if (d.emailSyncCount === undefined) d.emailSyncCount = 0;
-      return d;
-    }
-  } catch(e) {}
-  return JSON.parse(JSON.stringify(DEFAULT_DATA));
-}
-
-function saveData() {
-  try { localStorage.setItem('vihanFinanceData', JSON.stringify(financeData)); } catch(e) {}
-}
-
-let financeData = loadData();
-
-/* =========================================================
-   HELPERS
-   ========================================================= */
-const CATEGORY_META = {
-  'Food':       { icon:'🍔', bg:'#FEF2F2', color:'#DC2626' },
-  'Shopping':   { icon:'📦', bg:'#EFF6FF', color:'#2563EB' },
-  'Groceries':  { icon:'🛒', bg:'#ECFDF5', color:'#059669' },
-  'Fuel':       { icon:'⛽', bg:'#FEF3C7', color:'#D97706' },
-  'Bills':      { icon:'⚡', bg:'#F5F3FF', color:'#7C3AED' },
-  'Investment': { icon:'📈', bg:'#EFF6FF', color:'#1E40AF' },
-  'Insurance':  { icon:'🛡️', bg:'#ECFDF5', color:'#059669' },
-  'Family':     { icon:'👨‍👩‍👧', bg:'#FDF4FF', color:'#9333EA' },
-  'Other':      { icon:'💳', bg:'#F3F4F6', color:'#6B7280' }
-};
-
-const KAKEIBO_GROUPS = {
-  'Needs':     { cats:['Groceries','Bills','Fuel'],   color:'#2563EB' },
-  'Wants':     { cats:['Food','Shopping'],             color:'#DC2626' },
-  'Financial': { cats:['Investment','Insurance'],      color:'#059669' },
-  'Family':    { cats:['Family'],                      color:'#9333EA' }
-};
-
-function fmt(n) {
-  if (n >= 100000) return '₹' + (n/100000).toFixed(1) + 'L';
-  if (n >= 1000)   return '₹' + (n/1000).toFixed(n % 1000 === 0 ? 0 : 1) + 'K';
-  return '₹' + n.toLocaleString('en-IN');
-}
-function fmtFull(n) { return '₹' + (n||0).toLocaleString('en-IN'); }
-function sourceIcon(src) { return src==='SMS'?'📩':src==='Email'?'📧':'✍'; }
-
-/* =========================================================
-   FIX 3 — Live DB size helper (used by renderHealth & renderDbInfo)
-   ========================================================= */
-function computeDbSize() {
-  const json = JSON.stringify(financeData);
-  const bytes = new Blob([json]).size;
-  if (bytes >= 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
-  return (bytes / 1024).toFixed(1) + ' KB';
-}
-
-/* =========================================================
-   RENDER METRIC CARDS — FIX 1 & FIX 2
-   ========================================================= */
-function renderCards() {
-  document.getElementById('todaySpendAmt').textContent = fmtFull(financeData.todaySpend);
-  document.getElementById('monthSpendAmt').textContent = fmtFull(financeData.monthSpend);
-  document.getElementById('txCountSub').textContent    = `${financeData.transactions.length} transaction${financeData.transactions.length !== 1 ? 's' : ''} this month`;
-
-  /* FIX 7: Income badge — only show "Salary credited" if income > 0 */
-  document.getElementById('incomeAmt').textContent = fmtFull(financeData.income);
-  const incomeSub = document.getElementById('incomeSub');
-  if (incomeSub) {
-    incomeSub.innerHTML = financeData.income > 0
-      ? '<span class="badge badge-up">Salary credited</span>'
-      : '<span class="badge badge-neutral">No income recorded</span>';
-  }
-
-  document.getElementById('expensesAmt').textContent = fmtFull(financeData.expenses);
-
-  /* FIX 1: Divide-by-zero guard for expense percentage */
-  const expPct = financeData.income > 0
-    ? Math.round((financeData.expenses / financeData.income) * 100)
-    : 0;
-  document.getElementById('expPctBadge').textContent = expPct + '% of income spent';
-
-  document.getElementById('balanceAmt').textContent = fmtFull(financeData.balance);
-  const balanceBadge = document.getElementById('balanceBadge');
-  if (balanceBadge) {
-    balanceBadge.textContent = financeData.income > 0 ? 'Available to spend' : 'Add income to track balance';
-    balanceBadge.className   = financeData.income > 0 ? 'badge badge-up' : 'badge badge-neutral';
-  }
-
-  /* Credit used — FIX 1: Divide-by-zero guard */
-  document.getElementById('creditUsedAmt').textContent    = fmtFull(financeData.creditUsed);
-  document.getElementById('creditLimitLabel').textContent = financeData.creditLimit > 0
-    ? fmt(financeData.creditLimit) + ' limit'
-    : 'No limit set';
-
-  const pct = financeData.creditLimit > 0
-    ? Math.round((financeData.creditUsed / financeData.creditLimit) * 100)
-    : 0;
-
-  const pctLabel = document.getElementById('creditPctLabel');
-  pctLabel.textContent   = pct + '% used';
-  pctLabel.style.color   = pct <= 50 ? 'var(--green)' : pct <= 75 ? 'var(--amber)' : 'var(--red)';
-
-  const fill = document.getElementById('creditProgressFill');
-  fill.style.width  = pct + '%';
-  fill.className    = 'progress-fill ' + (pct <= 50 ? 'fill-safe' : pct <= 75 ? 'fill-warn' : 'fill-danger');
-
-  document.getElementById('creditProgressTrack').setAttribute('aria-valuenow', pct);
-
-  /* Today spend sub-label */
-  const todaySub = document.getElementById('todaySpendSub');
-  if (todaySub) {
-    todaySub.textContent = financeData.todaySpend > 0
-      ? 'Spent today'
-      : 'No transactions today';
-  }
-
-  /* Review banner — only show if there are items to review */
-  const n = financeData.reviewItems;
-  const banner = document.getElementById('reviewBanner');
-  if (banner) {
-    banner.style.display = n > 0 ? 'flex' : 'none';
-    document.getElementById('reviewTitle').textContent = `Needs Review — ${n} item${n !== 1 ? 's' : ''}`;
-    document.getElementById('reviewSub').textContent   = `${n} transaction${n !== 1 ? 's' : ''} need a category assigned`;
-    document.getElementById('reviewBadge').textContent = `${n} item${n !== 1 ? 's' : ''}`;
-  }
-}
-
-/* =========================================================
-   INVESTMENTS
-   ========================================================= */
-function renderInvestments() {
-  let total = 0, lastAmt = 0, lastDate = 'None';
-  financeData.investments.forEach(inv => {
-    total += inv.amount;
-    if (inv.amount > 0) { lastAmt = inv.amount; lastDate = inv.date; }
-  });
-  const monthlySip = financeData.investments.filter(i => i.type === 'SIP').reduce((s,i) => s + i.amount, 0);
-
-  document.getElementById('invTotal').textContent   = fmtFull(total);
-  document.getElementById('invMonthly').textContent = fmtFull(monthlySip);
-  document.getElementById('invUpcoming').textContent= 'None';
-  document.getElementById('invLast').textContent    = lastAmt > 0 ? `${fmtFull(lastAmt)} · ${lastDate}` : 'None';
-}
-
-/* =========================================================
-   RENDER TRANSACTIONS (dashboard widget)
-   ========================================================= */
-function renderTransactions(list) {
-  const container = document.getElementById('txList');
-  if (!container) return;
-  const source = list || financeData.transactions;
-  const sorted = source.slice().sort((a, b) => {
-    const ka = txSortKey(a), kb = txSortKey(b);
-    return kb > ka ? 1 : kb < ka ? -1 : 0;
-  });
-  const display = sorted.slice(0, 10);
-  if (!display.length) {
-    container.innerHTML = '<div class="tx-empty">No transactions yet. Tap + to add one.</div>';
-    return;
-  }
-  container.innerHTML = display.map(tx => {
-    const realIdx = financeData.transactions.indexOf(tx);
-    const meta    = CATEGORY_META[tx.category] || CATEGORY_META['Other'];
-    return `
-      <div class="tx-row" role="listitem" tabindex="0" data-idx="${realIdx}"
-           aria-label="${tx.merchant}, ${tx.category}, ${tx.date}, minus ${tx.amount} rupees">
-        <div class="tx-icon" style="background:${meta.bg};" aria-hidden="true">${meta.icon}</div>
-        <div class="tx-info">
-          <div class="tx-name">${tx.merchant}</div>
-          <div class="tx-meta">${tx.date} &middot; ${tx.category}</div>
-        </div>
-        <div class="tx-right">
-          <div class="tx-amount">−${fmtFull(tx.amount)}</div>
-          <div class="tx-source" title="Source: ${tx.source}">${sourceIcon(tx.source)}</div>
-        </div>
-      </div>`;
-  }).join('');
-  container.querySelectorAll('.tx-row').forEach(row => {
-    const idx = parseInt(row.dataset.idx);
-    row.addEventListener('click',   () => openEditModal(idx));
-    row.addEventListener('keydown', e  => { if (e.key === 'Enter' || e.key === ' ') openEditModal(idx); });
-  });
-}
-
-/* =========================================================
-   KAKEIBO
-   ========================================================= */
-function calcKakeibo() {
-  const totals = {};
-  for (const g in KAKEIBO_GROUPS) totals[g] = 0;
-  financeData.transactions.forEach(tx => {
-    for (const g in KAKEIBO_GROUPS) {
-      if (KAKEIBO_GROUPS[g].cats.includes(tx.category)) totals[g] += tx.amount;
-    }
-  });
-  return totals;
-}
-
-function renderKakeibo() {
-  const totals     = calcKakeibo();
-  const grandTotal = Object.values(totals).reduce((a,b) => a+b, 0) || 1;
-  const grid       = document.getElementById('kakeiboGrid');
-  const entries    = Object.entries(KAKEIBO_GROUPS);
-  grid.innerHTML   = entries.map(([group, meta]) => {
-    const amt = totals[group];
-    const pct = Math.round((amt / grandTotal) * 100);
-    return `
-      <div class="kakeibo-item">
-        <div class="kakeibo-label" style="color:${meta.color}">${group}</div>
-        <div class="kakeibo-amount" style="color:${meta.color}">${fmtFull(amt)}</div>
-        <div class="kakeibo-sub">${pct}% of tracked spend · ${meta.cats.join(', ')}</div>
-      </div>`;
-  }).join('');
-}
-
-/* =========================================================
-   DONUT CHART
-   ========================================================= */
-const CIRC = 2 * Math.PI * 62;
-
-function renderDonut() {
-  const totals     = calcKakeibo();
-  const grandTotal = Object.values(totals).reduce((a,b) => a+b, 0) || 1;
-  const groups     = Object.entries(KAKEIBO_GROUPS);
-  const svg        = document.getElementById('donutSvg');
-  [...svg.querySelectorAll('.donut-seg')].forEach(s => s.remove());
-  let offset = 0;
-  groups.forEach(([group, meta], i) => {
-    const dash   = (totals[group] / grandTotal) * CIRC;
-    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-    circle.setAttribute('cx', 84); circle.setAttribute('cy', 84); circle.setAttribute('r', 62);
-    circle.setAttribute('fill', 'none'); circle.setAttribute('stroke', meta.color);
-    circle.setAttribute('stroke-width', 22);
-    circle.setAttribute('stroke-dasharray', `0 ${CIRC}`);
-    circle.setAttribute('stroke-dashoffset', -offset);
-    circle.setAttribute('transform', 'rotate(-90 84 84)');
-    circle.classList.add('donut-seg');
-    circle.style.setProperty('--target-dash', `${dash} ${CIRC}`);
-    circle.style.animationDelay = (0.3 + i * 0.2) + 's';
-    svg.appendChild(circle);
-    offset += dash;
-  });
-  document.getElementById('donutTotal').textContent = fmt(grandTotal);
-  const legend = document.getElementById('donutLegend');
-  legend.innerHTML = groups.map(([group, meta]) => {
-    const pct = Math.round((totals[group] / grandTotal) * 100);
-    return `
-      <div class="legend-item" role="listitem">
-        <div class="legend-dot" style="background:${meta.color};"></div>
-        <div class="legend-info">
-          <div class="legend-name">${group} <span class="legend-pct">${pct}%</span></div>
-          <div class="legend-bar-track" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100">
-            <div class="legend-bar-fill" style="width:${pct}%; background:${meta.color};"></div>
-          </div>
-        </div>
-      </div>`;
-  }).join('');
-}
-
-/* =========================================================
-   FIX 3 & FIX 4 — SYSTEM HEALTH (all live, no hardcoded values)
-   ========================================================= */
-function renderHealth() {
-  /* FIX 3: Always compute DB size live */
-  document.getElementById('healthDbSize').textContent    = computeDbSize();
-  document.getElementById('healthSmsSync').textContent   = financeData.lastSmsSync   || 'Never';
-  document.getElementById('healthEmailSync').textContent = financeData.lastEmailSync  || 'Never';
-  document.getElementById('healthBackup').textContent    = financeData.lastBackup     || 'Never';
-  document.getElementById('lastSyncTime').textContent    = financeData.lastEmailSync  || 'Never';
-
-  /* FIX 4: Email sync count & status — all dynamic */
-  const count       = financeData.emailSyncCount || 0;
-  const countEl     = document.getElementById('emailSyncCount');
-  const statusEl    = document.getElementById('emailSyncStatus');
-  if (countEl) countEl.textContent = count + ' email' + (count !== 1 ? 's' : '');
-  if (statusEl) {
-    if (financeData.lastEmailSync) {
-      statusEl.className = 'status-ok';
-      statusEl.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Working`;
-    } else {
-      statusEl.className = 'status-never';
-      statusEl.textContent = 'Not synced';
-    }
-  }
-}
-
-/* =========================================================
-   FULL RENDER
-   ========================================================= */
-function renderAll() {
-  const ot = document.getElementById('overviewTitle');
-  if (ot) ot.textContent = 'Overview — ' + _CUR_MONTH_LONG + ' ' + _CUR_YEAR;
-  renderCards();
-  renderTransactions();
-  renderDonut();
-  renderKakeibo();
-  renderHealth();
-  renderInvestments();
-  const txPage = document.getElementById('txPage');
-  if (txPage && txPage.style.display !== 'none') renderTxScreen();
-}
-
-/* =========================================================
-   FIX 5 — REAL EXCEL EXPORT USING SheetJS
-   ========================================================= */
-function exportCSV(list) {
-  const rows = (list || financeData.transactions);
-  const header = 'merchant,amount,category,date,source';
-  const lines  = rows.map(tx =>
-    `"${tx.merchant}",${tx.amount},"${tx.category}","${tx.date}","${tx.source}"`
-  );
-  const csv = [header, ...lines].join('\n');
-  downloadBlob(csv, 'text/csv;charset=utf-8;', 'finance_data.csv');
-}
-
-function exportExcel(list) {
-  /* FIX 5: Real xlsx via SheetJS — not CSV renamed to .xlsx */
-  const rows = (list || financeData.transactions).map(tx => ({
-    Merchant: tx.merchant,
-    Amount:   tx.amount,
-    Category: tx.category,
-    Date:     tx.date,
-    Source:   tx.source
-  }));
-
-  if (!rows.length) {
-    showToast('No transactions to export', 'warn');
-    return;
-  }
-
-  const ws  = XLSX.utils.json_to_sheet(rows);
-  const wb  = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Transactions');
-
-  /* Column width hints */
-  ws['!cols'] = [
-    { wch: 24 }, // Merchant
-    { wch: 12 }, // Amount
-    { wch: 14 }, // Category
-    { wch: 14 }, // Date
-    { wch: 10 }, // Source
-  ];
-
-  XLSX.writeFile(wb, 'finance_data.xlsx');
-  showToast('Excel exported', 'success');
-}
-
-function downloadBlob(content, type, filename) {
-  const blob = new Blob([content], { type });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href = url; a.download = filename; a.click();
-  URL.revokeObjectURL(url);
-}
-
-document.getElementById('exportCsvBtn').addEventListener('click', () => { exportCSV(); showToast('CSV exported', 'success'); });
-document.getElementById('exportXlsBtn').addEventListener('click', () => exportExcel());
-
-/* =========================================================
-   BACKUP DATABASE
-   ========================================================= */
-function backupDatabase() {
-  saveData();
-  const json = JSON.stringify(financeData, null, 2);
-  downloadBlob(json, 'application/json;charset=utf-8;', 'vihan_backup.json');
-  const now   = new Date();
-  const MONS  = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  financeData.lastBackup = `${String(now.getDate()).padStart(2,'0')} ${MONS[now.getMonth()]}`;
-  saveData();
-  renderHealth();
-}
-
-document.getElementById('backupBtn').addEventListener('click', () => { backupDatabase(); showToast('Backup created!', 'success'); });
-
-/* =========================================================
-   TRANSACTION EDIT + DELETE
-   ========================================================= */
-const modal      = document.getElementById('addModal');
-const modalTitle = document.getElementById('modalTitle');
-const actionRow  = document.getElementById('modalActionRow');
-let editIndex    = -1;
-
-function openAddModal() {
-  editIndex = -1;
-  modalTitle.textContent = 'Add Transaction';
-  document.getElementById('fAmount').value     = '';
-  document.getElementById('fMerchant').value   = '';
-  document.getElementById('fCategory').value   = 'Food';
-  document.getElementById('fAccount').value    = 'HDFC';
-  document.getElementById('fSource').value     = 'Manual';
-  document.getElementById('fDate').valueAsDate = new Date();
-  actionRow.innerHTML = `<button class="btn-update" id="saveTxBtn">Add Transaction</button>`;
-  document.getElementById('saveTxBtn').addEventListener('click', handleSaveTx);
-  modal.classList.add('open');
-  setTimeout(() => document.getElementById('fAmount').focus(), 320);
-}
-
-function openEditModal(idx) {
-  const tx = financeData.transactions[idx];
-  if (!tx) return;
-  editIndex = idx;
-  modalTitle.textContent = 'Edit Transaction';
-  document.getElementById('fAmount').value   = tx.amount;
-  document.getElementById('fMerchant').value = tx.merchant;
-  document.getElementById('fCategory').value = tx.category;
-  document.getElementById('fSource').value   = tx.source;
-  document.getElementById('fDate').valueAsDate = new Date();
-  actionRow.innerHTML = `
-    <button class="btn-update" id="saveTxBtn">Update Transaction</button>
-    <button class="btn-delete" id="deleteTxBtn">Delete</button>`;
-  document.getElementById('saveTxBtn').addEventListener('click', handleSaveTx);
-  document.getElementById('deleteTxBtn').addEventListener('click', handleDeleteTx);
-  modal.classList.add('open');
-  setTimeout(() => document.getElementById('fAmount').focus(), 320);
-}
-
-function handleSaveTx() {
-  const amount   = parseFloat(document.getElementById('fAmount').value);
-  const merchant = document.getElementById('fMerchant').value.trim();
-  const category = document.getElementById('fCategory').value;
-  const source   = document.getElementById('fSource').value;
-  const dateVal  = document.getElementById('fDate').value;
-
-  if (!amount || amount <= 0 || !merchant) {
-    showToast('Please enter a valid amount and merchant name.', 'warn');
-    return;
-  }
-
-  const today       = new Date();
-  const selected    = dateVal ? new Date(dateVal) : new Date();
-  const todayMid    = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-  const selectedMid = new Date(selected.getFullYear(), selected.getMonth(), selected.getDate());
-  const diffDays    = Math.round((todayMid - selectedMid) / (1000 * 60 * 60 * 24));
-  let dateLabel     = 'Today';
-  if (diffDays === 1) dateLabel = 'Yesterday';
-  else if (diffDays > 1) dateLabel = `${diffDays} days ago`;
-  const isoDate = selected.toISOString().slice(0, 10);
-
-  if (editIndex === -1) {
-    financeData.transactions.unshift({ merchant, amount, category, date: dateLabel, isoDate, source });
-    financeData.monthSpend += amount;
-    financeData.expenses   += amount;
-    financeData.balance     = financeData.income - financeData.expenses;
-    if (diffDays === 0) financeData.todaySpend += amount;
-  } else {
-    const old   = financeData.transactions[editIndex];
-    const delta = amount - old.amount;
-    financeData.monthSpend += delta;
-    financeData.expenses   += delta;
-    financeData.balance     = financeData.income - financeData.expenses;
-    if (diffDays === 0 && editIndex !== 0) financeData.todaySpend += delta;
-    financeData.transactions[editIndex] = { merchant, amount, category, date: dateLabel, isoDate, source };
-  }
-
-  saveData();
-  renderAll();
-  closeModal();
-  showToast(editIndex === -1 ? 'Transaction added' : 'Transaction updated', 'success');
-}
-
-function handleDeleteTx() {
-  if (editIndex < 0) return;
-  moveToTrash(editIndex);
-  closeModal();
-  showToast('Moved to trash', 'warn');
-}
-
-/* =========================================================
-   MODAL HELPERS
-   ========================================================= */
-function closeModal() { modal.classList.remove('open'); }
-document.getElementById('modalClose').addEventListener('click', closeModal);
-modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
-document.getElementById('fabBtn').addEventListener('click', openAddModal);
-const legacyBtn = document.getElementById('addTxBtn');
-if (legacyBtn) legacyBtn.addEventListener('click', handleSaveTx);
-
-/* =========================================================
-   HEADER SEARCH
-   ========================================================= */
-document.getElementById('searchInput').addEventListener('input', function() {
-  const q = this.value.trim().toLowerCase();
-  if (!q) { renderTransactions(); return; }
-  const filtered = financeData.transactions.filter(tx =>
-    tx.merchant.toLowerCase().includes(q) ||
-    tx.category.toLowerCase().includes(q) ||
-    String(tx.amount).includes(q)
-  );
-  renderTransactions(filtered);
-});
-
-/* =========================================================
-   DATE FILTER
-   ========================================================= */
-document.getElementById('dateFilter').addEventListener('change', function() {
-  const prevM = new Date(_NOW.getFullYear(), _NOW.getMonth() - 1, 1);
-  const prevMonthName = ['January','February','March','April','May','June','July','August','September','October','November','December'][prevM.getMonth()];
-  const titles = {
-    today:      'Today',
-    month:      'Overview — ' + _CUR_MONTH_LONG + ' ' + _CUR_YEAR,
-    last_month: 'Overview — ' + prevMonthName + ' ' + prevM.getFullYear(),
-    custom:     'Custom Range'
-  };
-  document.getElementById('overviewTitle').textContent = titles[this.value] || 'Overview';
-});
-
-/* =========================================================
-   SYNC BUTTON — FIX 4: increments emailSyncCount each sync
-   ========================================================= */
-const syncBtn = document.getElementById('syncBtn');
-syncBtn.addEventListener('click', () => {
-  syncBtn.disabled = true;
-  syncBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="animation:spin 0.8s linear infinite"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg> Syncing…`;
-  setTimeout(() => {
-    syncBtn.disabled = false;
-    syncBtn.classList.add('sync-complete');
-    syncBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Sync Complete`;
-
-    const now  = new Date();
-    const MONS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    const padN = n => String(n).padStart(2, '0');
-    financeData.lastEmailSync = `${padN(now.getDate())} ${MONS[now.getMonth()]} ${padN(now.getHours())}:${padN(now.getMinutes())}`;
-    /* FIX 4: track and persist actual sync count */
-    financeData.emailSyncCount = (financeData.emailSyncCount || 0) + 1;
-    saveData();
-    renderHealth();
-
-    setTimeout(() => {
-      syncBtn.classList.remove('sync-complete');
-      syncBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg> Sync Now`;
-    }, 3000);
-  }, 2200);
-});
-
-/* =========================================================
-   NAVIGATION ROUTING
-   ========================================================= */
-const PAGE_MAP = {
-  dashboard:    'main-content',
-  transactions: 'txPage',
-  people:       'peoplePage',
-  reports:      'reportsPage',
-  settings:     'settingsPage',
-  investments:  'invPage',
-  trash:        'trashPage',
-  database:     'dbPage',
-  rules:        'rulesPage'
-};
-const NAV_PAGES = ['dashboard','transactions','people','reports','settings'];
-
-function showPage(page) {
-  Object.values(PAGE_MAP).forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.style.display = 'none';
-  });
-  const target = PAGE_MAP[page];
-  if (target) {
-    const el = document.getElementById(target);
-    if (el) el.style.display = 'block';
-  }
-  document.querySelectorAll('.nav-item').forEach((item, idx) => {
-    item.classList.toggle('active', NAV_PAGES[idx] === page);
-    item.toggleAttribute('aria-current', NAV_PAGES[idx] === page);
-  });
-  if (page === 'transactions') renderTxScreen();
-  if (page === 'reports')      renderReports();
-  if (page === 'people')       renderPeople();
-  if (page === 'settings')     renderSettings();
-  if (page === 'investments')  renderInvPage();
-  if (page === 'trash')        renderTrash();
-  if (page === 'database')     renderDbInfo();
-  if (page === 'rules')        renderRules();
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-/* =========================================================
-   BACKFILL isoDate on legacy transactions
-   ========================================================= */
-(function backfillIsoDates() {
-  const now = new Date();
-  const pad = n => String(n).padStart(2, '0');
-  const toISO = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
-  let changed = false;
-  financeData.transactions.forEach(tx => {
-    if (tx.isoDate) return;
-    const d   = new Date(now);
-    const lbl = (tx.date || '').toLowerCase();
-    if (lbl === 'yesterday') { d.setDate(d.getDate() - 1); }
-    else {
-      const m = lbl.match(/^(\d+)\s*days?\s*ago$/);
-      if (m) d.setDate(d.getDate() - parseInt(m[1]));
-    }
-    tx.isoDate = toISO(d);
-    changed = true;
-  });
-  if (changed) saveData();
-})();
-
-/* =========================================================
-   SCREEN 1 — TRANSACTIONS (filter engine)
-   ========================================================= */
-function txSortKey(tx) {
-  if (tx.isoDate) return tx.isoDate;
-  const lbl = (tx.date || '').toLowerCase();
-  const now  = new Date();
-  const pad  = n => String(n).padStart(2, '0');
-  const d    = new Date(now);
-  if (lbl === 'yesterday') d.setDate(d.getDate() - 1);
-  else { const m = lbl.match(/^(\d+)\s*days?\s*ago$/); if (m) d.setDate(d.getDate() - parseInt(m[1])); }
-  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
-}
-
-function getFilteredTransactions(ctx) {
-  ctx = ctx || {};
-  const search   = (ctx.search   !== undefined ? ctx.search   : (document.getElementById('txSearch')?.value  || '')).toLowerCase().trim();
-  const category = (ctx.category !== undefined ? ctx.category : (document.getElementById('txCatFilter')?.value || 'All'));
-  const dateF    = (ctx.dateF    !== undefined ? ctx.dateF    : (document.getElementById('txDateFilter')?.value || 'all'));
-  const account  = (ctx.account  !== undefined ? ctx.account  : (document.getElementById('txAccFilter')?.value || 'All'));
-
-  const now        = new Date();
-  const todayISO   = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
-  const thisYear   = now.getFullYear();
-  const thisMonth  = now.getMonth();
-  const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  const lastMonthY = lastMonthDate.getFullYear();
-  const lastMonthM = lastMonthDate.getMonth();
-
-  let result = financeData.transactions.filter(tx => {
-    if (search) {
-      const haystack = `${tx.merchant} ${tx.category} ${tx.amount}`.toLowerCase();
-      if (!haystack.includes(search)) return false;
-    }
-    if (category !== 'All' && tx.category !== category) return false;
-    if (account  !== 'All' && (tx.account || '') !== account) return false;
-    if (dateF !== 'all') {
-      const iso = tx.isoDate || txSortKey(tx);
-      if (dateF === 'today') {
-        if (iso !== todayISO) return false;
-      } else if (dateF === 'month') {
-        const [y, mo] = iso.split('-').map(Number);
-        if (y !== thisYear || mo - 1 !== thisMonth) return false;
-      } else if (dateF === 'last_month') {
-        const [y, mo] = iso.split('-').map(Number);
-        if (y !== lastMonthY || mo - 1 !== lastMonthM) return false;
-      }
-    }
-    return true;
-  });
-
-  result.sort((a, b) => {
-    const ka = txSortKey(a), kb = txSortKey(b);
-    if (kb > ka) return 1;
-    if (kb < ka) return -1;
-    return 0;
-  });
-  return result;
-}
-
-const getTxFiltered = getFilteredTransactions;
-
-function renderTxScreen() {
-  const container = document.getElementById('allTxList');
-  if (!container) return;
-  const allFiltered = getFilteredTransactions();
-  const display     = allFiltered.slice(0, 300);
-  const badge       = document.getElementById('txCountBadge');
-  if (badge) badge.textContent = allFiltered.length + ' records';
-  const sub = document.getElementById('txCountSub');
-  if (sub) sub.textContent = financeData.transactions.length + ' transaction' + (financeData.transactions.length !== 1 ? 's' : '') + ' this month';
-
-  if (!display.length) {
-    container.innerHTML = '<div class="tx-empty">No transactions match your filters.</div>';
-    return;
-  }
-  container.innerHTML = display.map((tx, i) => {
-    const realIdx = financeData.transactions.indexOf(tx);
-    const meta    = CATEGORY_META[tx.category] || CATEGORY_META['Other'];
-    return `
-      <div class="tx-row" data-idx="${realIdx}" tabindex="0" role="listitem"
-           aria-label="${tx.merchant}, ${tx.category}, ${tx.date}, minus ${tx.amount} rupees"
-           style="animation:fadeUp 0.18s ${Math.min(i,20)*0.022}s ease both;">
-        <div class="tx-icon" style="background:${meta.bg};" aria-hidden="true">${meta.icon}</div>
-        <div class="tx-info">
-          <div class="tx-name">${tx.merchant}</div>
-          <div class="tx-meta">${tx.date} &middot; ${tx.category}${tx.account ? ' &middot; ' + tx.account : ''}</div>
-        </div>
-        <div class="tx-right">
-          <div class="tx-amount">−${fmtFull(tx.amount)}</div>
-          <div class="tx-source" title="Source: ${tx.source}">${sourceIcon(tx.source)}</div>
-        </div>
-      </div>`;
-  }).join('');
-
-  if (allFiltered.length > 300) {
-    container.insertAdjacentHTML('beforeend',
-      `<div class="tx-empty" style="color:var(--amber);">Showing first 300 of ${allFiltered.length} results. Use filters to narrow down.</div>`);
-  }
-
-  container.querySelectorAll('.tx-row').forEach(row => {
-    const idx = parseInt(row.dataset.idx);
-    row.addEventListener('click',   () => openEditModal(idx));
-    row.addEventListener('keydown', e  => { if (e.key === 'Enter' || e.key === ' ') openEditModal(idx); });
-  });
-}
-
-['txSearch', 'txCatFilter', 'txDateFilter', 'txAccFilter'].forEach(id => {
-  const el = document.getElementById(id);
-  if (!el) return;
-  if (id === 'txSearch') {
-    let _dbT;
-    el.addEventListener('input', () => { clearTimeout(_dbT); _dbT = setTimeout(renderTxScreen, 200); });
-  } else {
-    el.addEventListener('change', renderTxScreen);
-  }
-});
-
-/* FIX 5: Export filtered — use real xlsx for Excel button */
-document.getElementById('txExportCsv')?.addEventListener('click', () => {
-  exportCSV(getTxFiltered());
-  showToast('CSV exported', 'success');
-});
-
-document.getElementById('txExportXls')?.addEventListener('click', () => {
-  exportExcel(getTxFiltered());
-});
-
-/* =========================================================
-   SCREEN 2 — REPORTS
-   ========================================================= */
-const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-const _CUR_MONTH_IDX = _NOW.getMonth();
-
-function _buildMonthMockData() {
-  return MONTHS_SHORT.map((m, i) => ({ m, income: 0, expenses: 0, invest: 0, _idx: i }));
-}
-let MONTH_MOCK_DATA = _buildMonthMockData();
-
-function renderReports() {
-  const totalExp = financeData.expenses;
-  const totalInv = financeData.investments.reduce((s,i) => s + i.amount, 0);
-  /* FIX 1: Balance never has divide-by-zero risk but kept safe */
-  const bal = financeData.income - totalExp;
-  document.getElementById('rIncome').textContent     = fmtFull(financeData.income);
-  document.getElementById('rExpense').textContent    = fmtFull(totalExp);
-  document.getElementById('rInvestment').textContent = fmtFull(totalInv);
-  document.getElementById('rBalance').textContent    = fmtFull(bal);
-  document.getElementById('rBalance').style.color    = bal >= 0 ? 'var(--green)' : 'var(--red)';
-
-  MONTH_MOCK_DATA = _buildMonthMockData();
-  MONTH_MOCK_DATA[_CUR_MONTH_IDX].expenses = financeData.monthSpend;
-  MONTH_MOCK_DATA[_CUR_MONTH_IDX].invest   = totalInv;
-  MONTH_MOCK_DATA[_CUR_MONTH_IDX].income   = financeData.income;
-
-  const yrEl = document.getElementById('yearSummaryHeadingYear');
-  if (yrEl) yrEl.textContent = _CUR_YEAR;
-
-  const maxVal = Math.max(...MONTH_MOCK_DATA.map(r => r.expenses || 0), 1);
-  const chart  = document.getElementById('monthlyBarChart');
-  if (chart) {
-    const visibleMonths = MONTH_MOCK_DATA.filter(r => r._idx <= _CUR_MONTH_IDX);
-    chart.innerHTML = visibleMonths.map(r => {
-      const isCur = r._idx === _CUR_MONTH_IDX;
-      const h = Math.max(8, Math.round(((r.expenses || 0) / maxVal) * 120));
-      return `
-        <div class="bar-col">
-          <div class="bar-val">${r.expenses ? fmt(r.expenses) : ''}</div>
-          <div class="bar-fill" style="height:${h}px;background:linear-gradient(to top, ${isCur?'#1D4ED8':'#BFDBFE'}, ${isCur?'#3B82F6':'#DBEAFE'});border-radius:5px 5px 0 0;"></div>
-          <div class="bar-label">${r.m}</div>
-        </div>`;
-    }).join('');
-  }
-
-  const totals     = calcKakeibo();
-  const grandTotal = Object.values(totals).reduce((a,b) => a+b, 0) || 1;
-  const groups     = Object.entries(KAKEIBO_GROUPS);
-  const rSvg       = document.getElementById('reportDonutSvg');
-  if (rSvg) {
-    [...rSvg.querySelectorAll('.donut-seg')].forEach(s => s.remove());
-    let offset = 0;
-    groups.forEach(([g, meta], i) => {
-      const dash = (totals[g] / grandTotal) * CIRC;
-      const c    = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      c.setAttribute('cx',84); c.setAttribute('cy',84); c.setAttribute('r',62);
-      c.setAttribute('fill','none'); c.setAttribute('stroke',meta.color); c.setAttribute('stroke-width',22);
-      c.setAttribute('stroke-dasharray',`0 ${CIRC}`); c.setAttribute('stroke-dashoffset',-offset);
-      c.setAttribute('transform','rotate(-90 84 84)'); c.classList.add('donut-seg');
-      c.style.setProperty('--target-dash',`${dash} ${CIRC}`);
-      c.style.animationDelay = (0.3 + i * 0.2) + 's';
-      rSvg.appendChild(c); offset += dash;
-    });
-    document.getElementById('reportDonutTotal').textContent = fmt(grandTotal);
-    const rLegend = document.getElementById('reportDonutLegend');
-    rLegend.innerHTML = groups.map(([g, meta]) => {
-      const pct = Math.round((totals[g] / grandTotal) * 100);
-      return `<div class="legend-item"><div class="legend-dot" style="background:${meta.color}"></div>
-        <div class="legend-info">
-          <div class="legend-name">${g} <span class="legend-pct">${pct}%</span></div>
-          <div class="legend-bar-track"><div class="legend-bar-fill" style="width:${pct}%;background:${meta.color}"></div></div>
-        </div></div>`;
-    }).join('');
-  }
-
-  const tbody = document.getElementById('yearTableBody');
-  if (tbody) {
-    const tableMonths = MONTH_MOCK_DATA.filter(r => r._idx <= _CUR_MONTH_IDX);
-    tbody.innerHTML = tableMonths.length ? tableMonths.map(r => {
-      const savings = (r.income || 0) - (r.expenses || 0) - (r.invest || 0);
-      const isCur   = r._idx === _CUR_MONTH_IDX;
-      return `<tr>
-        <td><strong>${r.m}</strong>${isCur?' <span style="font-size:10px;color:var(--blue);font-family:DM Sans,sans-serif;">(current)</span>':''}</td>
-        <td style="color:var(--green)">${r.income   ? fmtFull(r.income)   : '—'}</td>
-        <td style="color:var(--red)">${r.expenses  ? fmtFull(r.expenses)  : '—'}</td>
-        <td style="color:var(--blue)">${r.invest   ? fmtFull(r.invest)    : '—'}</td>
-        <td style="color:${savings >= 0 ? 'var(--green)' : 'var(--red)'}">${r.income ? fmtFull(savings) : '—'}</td>
-      </tr>`;
-    }).join('') : '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px;">No data yet for ' + _CUR_YEAR + '</td></tr>';
-  }
-}
-
-document.getElementById('reportExportCsv')?.addEventListener('click', () => {
-  const rows = MONTH_MOCK_DATA.filter(r => r._idx <= _CUR_MONTH_IDX)
-    .map(r => `${r.m},${r.income||0},${r.expenses||0},${r.invest||0},${(r.income||0)-(r.expenses||0)-(r.invest||0)}`);
-  downloadBlob(['Month,Income,Expenses,Investment,Savings',...rows].join('\n'), 'text/csv', 'report_' + _CUR_YEAR + '.csv');
-  showToast('Report exported', 'success');
-});
-
-/* =========================================================
-   SCREEN 3 — PEOPLE
-   ========================================================= */
-const PERSON_COLORS = ['#E91E63','#1565C0','#9C27B0','#FF5722'];
-
-function renderPeople() {
-  const grid = document.getElementById('peopleGrid');
-  if (!grid) return;
-  if (!financeData.people.length) {
-    grid.innerHTML = '<div class="tx-empty" style="grid-column:1/-1;padding:40px 0;">No people added yet.</div>';
-    return;
-  }
-  grid.innerHTML = financeData.people.map((p, pi) => {
-    const given    = p.txns.filter(t => t.type === 'given').reduce((s,t) => s + t.amount, 0);
-    const received = p.txns.filter(t => t.type === 'received').reduce((s,t) => s + t.amount, 0);
-    const last     = p.txns.length ? p.txns[p.txns.length - 1] : null;
-    const initials = p.name.split(' ').map(w => w[0]).join('').toUpperCase();
-    return `
-      <div class="person-card" onclick="openPersonModal(${pi})">
-        <div class="person-header">
-          <div class="person-avatar" style="background:${p.color || PERSON_COLORS[pi % 4]}">${p.emoji || initials}</div>
-          <div>
-            <div class="person-name">${p.name}</div>
-            <div class="person-role">${p.role || 'Family'} · ${p.txns.length} transaction${p.txns.length !== 1 ? 's' : ''}</div>
-          </div>
-        </div>
-        <div class="person-stats">
-          <div>
-            <div class="person-stat-label">Total Given</div>
-            <div class="person-stat-value" style="color:var(--red)">${fmtFull(given)}</div>
-          </div>
-          <div>
-            <div class="person-stat-label">Total Received</div>
-            <div class="person-stat-value" style="color:var(--green)">${fmtFull(received)}</div>
-          </div>
-          <div style="grid-column:1/-1">
-            <div class="person-stat-label">Last Transaction</div>
-            <div class="person-stat-value" style="font-size:12px;font-family:'DM Sans',sans-serif">
-              ${last ? `${last.type === 'given' ? 'Gave' : 'Got'} ${fmtFull(last.amount)} — ${last.note || ''}` : 'None yet'}
-            </div>
-          </div>
-        </div>
-      </div>`;
-  }).join('');
-}
-
-function openPersonModal(idx) {
-  const p = financeData.people[idx];
-  if (!p) return;
-  document.getElementById('personModalTitle').textContent = p.name + ' — History';
-  const body = document.getElementById('personModalBody');
-  if (!p.txns.length) {
-    body.innerHTML = '<div class="tx-empty">No transactions yet.</div>';
-  } else {
-    body.innerHTML = p.txns.slice().reverse().map(t => `
-      <div class="tx-row">
-        <div class="tx-icon" style="background:${t.type === 'given' ? 'var(--red-light)' : 'var(--green-light)'}">${t.type === 'given' ? '💸' : '💰'}</div>
-        <div class="tx-info">
-          <div class="tx-name">${t.note || 'Transaction'}</div>
-          <div class="tx-meta">${t.date || '—'} · ${t.type === 'given' ? 'Given' : 'Received'}</div>
-        </div>
-        <div class="tx-right">
-          <div class="tx-amount" style="color:${t.type === 'given' ? 'var(--red)' : 'var(--green)'}">${t.type === 'given' ? '−' : '+'} ${fmtFull(t.amount)}</div>
-        </div>
-      </div>`).join('');
-  }
-  document.getElementById('personModal').classList.add('open');
-}
-
-document.getElementById('personModalClose')?.addEventListener('click', () => {
-  document.getElementById('personModal').classList.remove('open');
-});
-document.getElementById('personModal')?.addEventListener('click', e => {
-  if (e.target === e.currentTarget) e.currentTarget.classList.remove('open');
-});
-
-document.getElementById('addPersonTxBtn')?.addEventListener('click', () => {
-  const name   = document.getElementById('pPerson').value;
-  const amount = parseFloat(document.getElementById('pAmount').value);
-  const type   = document.getElementById('pType').value;
-  const note   = document.getElementById('pNote').value.trim();
-  if (!amount || amount <= 0) { showToast('Enter a valid amount', 'warn'); return; }
-  const pidx = financeData.people.findIndex(p => p.name === name);
-  if (pidx < 0) return;
-  const today   = new Date();
-  const dateStr = `${String(today.getDate()).padStart(2,'0')} ${MONTHS_SHORT[today.getMonth()]}`;
-  financeData.people[pidx].txns.push({ amount, type, note, date: dateStr });
-  saveData();
-  renderPeople();
-  document.getElementById('pAmount').value = '';
-  document.getElementById('pNote').value   = '';
-  showToast('Transaction added for ' + name, 'success');
-});
-
-/* =========================================================
-   SCREEN 4 — SETTINGS
-   ========================================================= */
-function renderSettings() {
-  const el = document.getElementById('sLastSync');
-  if (el) el.textContent = financeData.lastEmailSync || '—';
-
-  /* FIX 4: show actual email count in settings panel */
-  const sc = document.getElementById('sEmailCount');
-  if (sc) {
-    const count = financeData.emailSyncCount || 0;
-    sc.textContent = count + ' email' + (count !== 1 ? 's' : '');
-  }
-
-  const map  = { auto: 0, light: 1, dark: 2 };
-  const btns = document.querySelectorAll('.theme-btn');
-  if (btns.length && typeof _theme !== 'undefined') {
-    btns.forEach(b => b.classList.remove('active'));
-    if (btns[map[_theme]]) btns[map[_theme]].classList.add('active');
-  }
-}
-
-function toggleSetting(el) { el.classList.toggle('on'); }
-
-function setTheme(t, btn) {
-  _theme = t;
-  localStorage.setItem('vihanTheme', t);
-  _applyTheme(t);
-  document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
-  if (btn) btn.classList.add('active');
-  showToast('Theme set to ' + t, 'success', 1800);
-}
-
-document.getElementById('sBackupBtn')?.addEventListener('click', () => { backupDatabase(); showToast('Backup created!', 'success'); });
-document.getElementById('sExportCsv')?.addEventListener('click', () => { exportCSV(); showToast('CSV exported', 'success'); });
-document.getElementById('sExportXls')?.addEventListener('click', () => exportExcel());
-
-document.getElementById('sSyncBtn')?.addEventListener('click', () => {
-  const btn = document.getElementById('sSyncBtn');
-  btn.textContent = 'Syncing…'; btn.disabled = true;
-  setTimeout(() => {
-    const now = new Date();
-    const s   = `${String(now.getDate()).padStart(2,'0')} ${MONTHS_SHORT[now.getMonth()]} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-    financeData.lastEmailSync  = s;
-    financeData.emailSyncCount = (financeData.emailSyncCount || 0) + 1;
-    saveData();
-    renderSettings();
-    renderHealth();
-    btn.textContent = '✓ Synced'; btn.disabled = false;
-    setTimeout(() => { btn.textContent = 'Sync Now'; }, 3000);
-  }, 2000);
-});
-
-/* =========================================================
-   SCREEN 5 — INVESTMENTS FULL
-   ========================================================= */
-function renderInvPage() {
-  const types = ['SIP','Insurance','Gold','RD'];
-  const ids   = ['invSipTotal','invInsTotal','invGoldTotal','invRdTotal'];
-  types.forEach((t, i) => {
-    const total = financeData.investments.filter(inv => inv.type === t).reduce((s, inv) => s + inv.amount, 0);
-    document.getElementById(ids[i]).textContent = fmtFull(total);
-  });
-
-  const list = document.getElementById('invList');
-  if (!list) return;
-  const activeInv = financeData.investments.filter(i => i.amount > 0);
-  if (!activeInv.length) {
-    list.innerHTML = '<div class="tx-empty">No investments recorded yet.</div>';
-  } else {
-    const meta = {
-      SIP:       { icon:'📈', color:'var(--blue)' },
-      Insurance: { icon:'🛡️', color:'var(--green)' },
-      Gold:      { icon:'🥇', color:'var(--amber)' },
-      RD:        { icon:'🏦', color:'var(--purple)' },
-      Other:     { icon:'💼', color:'var(--muted)' }
-    };
-    list.innerHTML = activeInv.map(inv => {
-      const m = meta[inv.type] || meta.Other;
-      return `
-        <div class="tx-row">
-          <div class="tx-icon" style="background:var(--bg);border:1px solid var(--border)">${m.icon}</div>
-          <div class="tx-info">
-            <div class="tx-name">${inv.type}</div>
-            <div class="tx-meta">${inv.date} · ${inv.frequency || 'One-time'}</div>
-          </div>
-          <div class="tx-right">
-            <div class="tx-amount" style="color:${m.color}">${fmtFull(inv.amount)}</div>
-          </div>
-        </div>`;
-    }).join('');
-  }
-
-  const df = document.getElementById('invDate');
-  if (df && !df.value) df.valueAsDate = new Date();
-}
-
-document.getElementById('addInvBtn')?.addEventListener('click', () => {
-  const type    = document.getElementById('invType').value;
-  const amount  = parseFloat(document.getElementById('invAmount').value);
-  const freq    = document.getElementById('invFreq').value;
-  const dateVal = document.getElementById('invDate').value;
-  if (!amount || amount <= 0) { showToast('Enter a valid amount', 'warn'); return; }
-  const d       = dateVal ? new Date(dateVal) : new Date();
-  const dateStr = `${String(d.getDate()).padStart(2,'0')} ${MONTHS_SHORT[d.getMonth()]}`;
-  financeData.investments.push({ type, amount, date: dateStr, frequency: freq });
-  saveData();
-  renderInvPage();
-  renderInvestments();
-  document.getElementById('invAmount').value = '';
-  showToast('Investment added', 'success');
-});
-
-document.getElementById('invExportCsv')?.addEventListener('click', () => {
-  const rows = financeData.investments.map(inv =>
-    `"${inv.type}",${inv.amount},"${inv.date}","${inv.frequency || ''}"`);
-  downloadBlob(['type,amount,date,frequency', ...rows].join('\n'), 'text/csv', 'investments.csv');
-  showToast('Investments exported', 'success');
-});
-
-/* =========================================================
-   SCREEN 6 — TRASH
-   ========================================================= */
-function moveToTrash(idx) {
-  const tx = financeData.transactions[idx];
-  if (!tx) return;
-  financeData.trash.push({ ...tx, deletedAt: new Date().toISOString() });
-  financeData.monthSpend -= tx.amount;
-  financeData.expenses   -= tx.amount;
-  financeData.balance     = financeData.income - financeData.expenses;
-  financeData.transactions.splice(idx, 1);
-  saveData();
-  renderAll();
-}
-
-function renderTrash() {
-  const now = Date.now();
-  financeData.trash = financeData.trash.filter(t =>
-    !t.deletedAt || (now - new Date(t.deletedAt).getTime()) < 30 * 24 * 60 * 60 * 1000
-  );
-  saveData();
-
-  const list  = document.getElementById('trashList');
-  const badge = document.getElementById('trashCountBadge');
-  if (badge) badge.textContent = financeData.trash.length + ' items';
-  if (!list) return;
-  if (!financeData.trash.length) {
-    list.innerHTML = '<div class="tx-empty">Trash is empty.</div>';
-    return;
-  }
-  list.innerHTML = financeData.trash.map((tx, i) => {
-    const meta    = CATEGORY_META[tx.category] || CATEGORY_META.Other;
-    const daysAgo = tx.deletedAt ? Math.floor((now - new Date(tx.deletedAt).getTime()) / (1000 * 60 * 60 * 24)) : 0;
-    return `
-      <div class="trash-row">
-        <div class="tx-icon" style="background:${meta.bg};opacity:0.7">${meta.icon}</div>
-        <div class="trash-info">
-          <div class="trash-name">${tx.merchant}</div>
-          <div class="trash-meta">${tx.category} · Deleted ${daysAgo === 0 ? 'today' : daysAgo + ' days ago'} · Auto-delete in ${30 - daysAgo}d</div>
-        </div>
-        <div class="trash-amount">−${fmtFull(tx.amount)}</div>
-        <div class="trash-actions">
-          <button class="btn-restore" onclick="restoreTrash(${i})">Restore</button>
-          <button class="btn-perm-del" onclick="permDelete(${i})">Delete</button>
-        </div>
-      </div>`;
-  }).join('');
-}
-
-function restoreTrash(i) {
-  const tx = financeData.trash[i];
-  if (!tx) return;
-  const { deletedAt, ...clean } = tx;
-  financeData.transactions.unshift(clean);
-  financeData.monthSpend += clean.amount;
-  financeData.expenses   += clean.amount;
-  financeData.balance     = financeData.income - financeData.expenses;
-  financeData.trash.splice(i, 1);
-  saveData();
-  renderAll();
-  renderTrash();
-  showToast('Transaction restored', 'success');
-}
-
-function permDelete(i) {
-  if (!confirm('Permanently delete this transaction?')) return;
-  financeData.trash.splice(i, 1);
-  saveData();
-  renderTrash();
-  showToast('Permanently deleted', 'warn');
-}
-
-document.getElementById('emptyTrashBtn')?.addEventListener('click', () => {
-  if (!financeData.trash.length) return;
-  if (!confirm('Permanently delete ALL trash items?')) return;
-  financeData.trash = [];
-  saveData();
-  renderTrash();
-  showToast('Trash emptied', 'warn');
-});
-
-/* =========================================================
-   SCREEN 7 — DATABASE INFO — FIX 3 & FIX 10
-   ========================================================= */
-function renderDbInfo() {
-  /* FIX 3 & FIX 10: Always compute size live — never read financeData.dbSize */
-  const liveSize = computeDbSize();
-  document.getElementById('dbTxCount').textContent     = financeData.transactions.length;
-  document.getElementById('dbInvCount').textContent    = financeData.investments.filter(i => i.amount > 0).length;
-  document.getElementById('dbRulesCount').textContent  = financeData.rules.length;
-  document.getElementById('dbPeopleCount').textContent = financeData.people.length;
-  document.getElementById('dbTrashCount').textContent  = financeData.trash.length;
-  document.getElementById('dbSize').textContent        = liveSize;
-  document.getElementById('dbLastBackup').textContent  = financeData.lastBackup   || 'Never';
-  document.getElementById('dbLastSync').textContent    = financeData.lastEmailSync || 'Never';
-  document.getElementById('dbLastSms').textContent     = financeData.lastSmsSync   || 'Never';
-  const oldest = financeData.transactions.length
-    ? financeData.transactions[financeData.transactions.length - 1].date
-    : '—';
-  document.getElementById('dbOldest').textContent = oldest;
-}
-
-document.getElementById('dbExportAll')?.addEventListener('click', () => {
-  downloadBlob(JSON.stringify(financeData, null, 2), 'application/json', 'vihan_full_backup.json');
-  showToast('Full backup exported', 'success');
-});
-
-document.getElementById('dbImportBtn')?.addEventListener('click', () => {
-  document.getElementById('dbImportFile').click();
-});
-
-/* FIX 6: Validate all required fields before importing backup */
-document.getElementById('dbImportFile')?.addEventListener('change', function() {
-  const file = this.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    try {
-      const imported = JSON.parse(e.target.result);
-
-      /* FIX 6: Safety validation — check all required top-level keys */
-      const required = ['transactions', 'investments', 'people', 'rules', 'trash'];
-      const missing  = required.filter(k => !Array.isArray(imported[k]));
-      if (missing.length) {
-        showToast('Invalid backup file — missing: ' + missing.join(', '), 'error');
-        return;
-      }
-
-      /* Additional sanity: transactions must be an array */
-      if (!Array.isArray(imported.transactions)) {
-        showToast('Invalid backup file', 'error');
-        return;
-      }
-
-      Object.assign(financeData, imported);
-      saveData();
-      renderAll();
-      renderDbInfo();
-      showToast('Backup imported successfully!', 'success');
-    } catch(err) {
-      showToast('Could not parse backup file — file may be corrupted', 'error');
-    }
-  };
-  reader.readAsText(file);
-  this.value = '';
-});
-
-/* =========================================================
-   SCREEN 8 — RULES
-   ========================================================= */
-function renderRules() {
-  const uncat  = financeData.transactions.filter(tx => tx.category === 'Other' || !tx.category);
-  const badge  = document.getElementById('uncatBadge');
-  if (badge) badge.textContent = uncat.length + ' items';
-
-  const uncatList = document.getElementById('uncatList');
-  if (uncatList) {
-    uncatList.innerHTML = uncat.length ? uncat.map(tx => {
-      const realIdx = financeData.transactions.indexOf(tx);
-      return `
-        <div class="uncateg-row">
-          <div class="uncateg-info">
-            <div class="uncateg-name">${tx.merchant}</div>
-            <div class="uncateg-amt">${fmtFull(tx.amount)} · ${tx.date}</div>
-          </div>
-          <select class="form-select" style="width:120px;font-size:12px;" onchange="assignCat(${realIdx},this.value)">
-            <option value="">Assign…</option>
-            ${Object.keys(CATEGORY_META).map(c => `<option value="${c}">${c}</option>`).join('')}
-          </select>
-        </div>`;
-    }).join('') : '<div class="tx-empty">No uncategorized transactions. 🎉</div>';
-  }
-
-  const rList  = document.getElementById('rulesList');
-  const rBadge = document.getElementById('rulesCountBadge');
-  if (rBadge) rBadge.textContent = financeData.rules.length;
-  if (rList) {
-    rList.innerHTML = financeData.rules.length ? financeData.rules.map((r, i) => `
-      <div class="rule-row">
-        <div class="rule-keyword">${r.keyword}</div>
-        <div class="rule-arrow">→</div>
-        <div class="rule-cat" style="color:${CATEGORY_META[r.category]?.color || 'var(--muted)'}">
-          ${CATEGORY_META[r.category]?.icon || ''} ${r.category}
-        </div>
-        <button class="btn-del-rule" onclick="deleteRule(${i})">×</button>
-      </div>`).join('') : '<div class="tx-empty">No rules saved yet.</div>';
-  }
-}
-
-function assignCat(idx, category) {
-  if (!category) return;
-  financeData.transactions[idx].category = category;
-  const merchant = financeData.transactions[idx].merchant;
-  if (!financeData.rules.find(r => r.keyword.toLowerCase() === merchant.toLowerCase())) {
-    financeData.rules.push({ keyword: merchant, category });
-  }
-  saveData();
-  renderAll();
-  renderRules();
-}
-
-function deleteRule(i) {
-  financeData.rules.splice(i, 1);
-  saveData();
-  renderRules();
-}
-
-document.getElementById('addRuleBtn')?.addEventListener('click', () => {
-  const kw  = document.getElementById('ruleKeyword').value.trim();
-  const cat = document.getElementById('ruleCat').value;
-  if (!kw) { showToast('Enter a keyword', 'warn'); return; }
-  if (financeData.rules.find(r => r.keyword.toLowerCase() === kw.toLowerCase())) {
-    showToast('Rule already exists for this keyword', 'warn'); return;
-  }
-  financeData.rules.push({ keyword: kw, category: cat });
-  saveData();
-  renderRules();
-  showToast('Rule saved: ' + kw + ' → ' + cat, 'success');
-  document.getElementById('ruleKeyword').value = '';
-  financeData.transactions.forEach(tx => {
-    if (tx.merchant.toLowerCase().includes(kw.toLowerCase()) && tx.category === 'Other') {
-      tx.category = cat;
-    }
-  });
-  saveData();
-  renderAll();
-});
-
-document.getElementById('resetRulesBtn')?.addEventListener('click', () => {
-  if (!confirm('Delete all saved rules?')) return;
-  financeData.rules = [];
-  saveData();
-  renderRules();
-});
-
-/* =========================================================
-   REAL-TIME CLOCK
-   ========================================================= */
-const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-const pad = n => String(n).padStart(2, '0');
-function tick() {
-  const n = new Date();
-  document.getElementById('clock').textContent =
-    `${pad(n.getDate())} ${MONTHS[n.getMonth()]} ${n.getFullYear()}  ${pad(n.getHours())}:${pad(n.getMinutes())}:${pad(n.getSeconds())}`;
-}
-tick();
-setInterval(tick, 1000);
-
-/* =========================================================
-   INIT
-   ========================================================= */
-renderAll();
-
-/* =========================================================
-   TOAST SYSTEM
-   ========================================================= */
-function showToast(msg, type = 'info', ms = 3000) {
-  const icons = { info:'ℹ️', success:'✅', error:'❌', warn:'⚠️' };
-  const t     = document.createElement('div');
-  t.className = `toast toast-${type}`;
-  t.innerHTML = `<span style="font-size:15px">${icons[type] || 'ℹ️'}</span><span>${msg}</span>`;
-  document.getElementById('toastContainer').appendChild(t);
-  requestAnimationFrame(() => requestAnimationFrame(() => t.classList.add('show')));
-  setTimeout(() => {
-    t.classList.remove('show');
-    t.classList.add('hide');
-    setTimeout(() => t.remove(), 400);
-  }, ms);
-}
-
-/* FIX 7: Patch alert() → toast (no fake demo messages will appear) */
-window._origAlert = window.alert;
-window.alert = (msg) => showToast(String(msg),
-  msg.toLowerCase().includes('error') || msg.toLowerCase().includes('invalid') ? 'error' :
-  msg.toLowerCase().includes('success') ? 'success' : 'info');
-
-/* =========================================================
-   DARK MODE SYSTEM
-   ========================================================= */
-let _theme = localStorage.getItem('vihanTheme') || 'auto';
-
-function _applyTheme(t) {
-  const dark = t === 'dark' || (t === 'auto' && window.matchMedia('(prefers-color-scheme:dark)').matches);
-  document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
-  const btn = document.getElementById('themeToggleBtn');
-  if (btn) btn.textContent = dark ? '☀️' : '🌙';
-}
-
-_applyTheme(_theme);
-window.matchMedia('(prefers-color-scheme:dark)').addEventListener('change', () => {
-  if (_theme === 'auto') _applyTheme('auto');
-});
-
-document.getElementById('themeToggleBtn').addEventListener('click', () => {
-  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-  const next   = isDark ? 'light' : 'dark';
-  _theme = next;
-  localStorage.setItem('vihanTheme', next);
-  _applyTheme(next);
-  const btn = document.getElementById('themeToggleBtn');
-  btn.style.transform = 'scale(.8) rotate(180deg)';
-  setTimeout(() => btn.style.transform = '', 300);
-});
-
-/* =========================================================
-   KEYBOARD SHORTCUTS
-   ========================================================= */
-document.addEventListener('keydown', e => {
-  if ((e.metaKey || e.ctrlKey) && e.key === 'n') { e.preventDefault(); openAddModal(); }
-  if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-    e.preventDefault();
-    const s = document.getElementById('searchInput');
-    if (s) { s.focus(); s.select(); }
-  }
-});
-
-/* =========================================================
-   SYNC ACTIVE THEME BTN ON LOAD
-   ========================================================= */
-(function syncActiveTheme() {
-  const map  = { auto: 0, light: 1, dark: 2 };
-  const btns = document.querySelectorAll('.theme-btn');
-  btns.forEach(b => b.classList.remove('active'));
-  if (btns[map[_theme]]) btns[map[_theme]].classList.add('active');
-})();
-
-</script>
-
-<script>
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js')
-      .then(reg => {
-        console.log('Service Worker Registered');
-        reg.update();
-      })
-      .catch(err => {
-        console.error('Service Worker Error:', err);
-      });
-  });
-}
- 
-</script>
-</body>
-</html>
-
