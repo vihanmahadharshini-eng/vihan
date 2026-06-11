@@ -27,4 +27,4 @@ function createSyncButton() {
     document.body.appendChild(btn);
 }
 
-window.addEventListener("load", createSyncButton);
+window.addEventListener("load", createSyncButton):
