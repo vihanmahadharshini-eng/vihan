@@ -9,7 +9,7 @@ function createSyncButton() {
   const btn = document.createElement("button");
 
   btn.id = "vihanSyncBtn";
-  btn.innerText = "🔄 Sync Center";
+  btn.innerText = "Sync Center";
 
   btn.style.position = "fixed";
   btn.style.bottom = "90px";
